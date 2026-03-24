@@ -1,0 +1,62 @@
+WFM Platform — Netlify Deployment Instructions
+===============================================
+
+WHAT'S IN THIS PACKAGE
+-----------------------
+  index.html                    The WFM platform
+  netlify/functions/chat.js     Serverless AI proxy (handles API calls)
+  netlify.toml                  Netlify configuration
+  deploy-instructions.txt       This file
+
+
+STEP 1 — Get an Anthropic API key (free)
+-----------------------------------------
+1. Go to console.anthropic.com
+2. Sign up / log in
+3. Go to API Keys → Create Key
+4. Copy the key (starts with sk-ant-...)
+
+
+STEP 2 — Deploy to Netlify (free)
+-----------------------------------
+Option A — Netlify Drop (easiest, no account needed for first deploy):
+1. Go to app.netlify.com/drop
+2. Drag the entire "wfm-deploy" FOLDER onto the page
+   *** IMPORTANT: drag the FOLDER, not individual files ***
+3. Wait ~30 seconds for deploy
+4. Netlify gives you a URL like: https://amazing-name-123.netlify.app
+
+Option B — Netlify CLI:
+1. Install: npm install -g netlify-cli
+2. Run: netlify deploy --prod
+3. Follow the prompts
+
+
+STEP 3 — Set your API key in Netlify
+--------------------------------------
+1. Open your site in Netlify dashboard (app.netlify.com)
+2. Go to: Site settings → Environment variables
+3. Click "Add a variable"
+4. Key:   ANTHROPIC_API_KEY
+   Value: sk-ant-... (your key from Step 1)
+5. Click Save
+6. Go to Deploys → Trigger deploy → Deploy site
+
+
+STEP 4 — Open your site
+------------------------
+Open the URL from Step 2. The AI chat will now work on all 4 tabs.
+
+
+COSTS
+-----
+- Netlify hosting: FREE (generous free tier)
+- Anthropic API: ~$0.003 per chat message (very cheap)
+  A typical planning session of 20 questions costs ~$0.06
+
+
+TROUBLESHOOTING
+---------------
+"API key not set" error → Redo Step 3, make sure you redeployed after setting the key
+"Network error"         → Check that you dragged the FOLDER (not just index.html)
+Chat not appearing      → Hard refresh the page (Ctrl+Shift+R)
