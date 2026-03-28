@@ -1589,6 +1589,7 @@ body {
         <option value="actuals" selected>Actuals</option>
         <option value="unadjusted">Actuals-Unadjusted</option>
         <option value="adjustment">Actuals-Adjustment</option>
+        <option value="working">Working</option>
       </select>
       <span class="cp-view-badge readonly" id="cp-view-badge">READ ONLY</span>
       <div style="width:1px;height:18px;background:var(--border-lt);margin:0 4px;"></div>
@@ -2708,7 +2709,7 @@ function renderCapPlan() {
   if (!qid) return;
 
   const year = parseInt(document.getElementById('cp-year-sel').value);
-  const view = document.getElementById('cp-view-sel').value; // 'actuals' | 'unadjusted' | 'adjustment'
+  const view = document.getElementById('cp-view-sel').value; // 'actuals' | 'unadjusted' | 'adjustment' | 'working'
 
   // Resolve queue index and synth key
   const qIdx = ACTIVE_QIDS.indexOf(qid) + 1;
@@ -2720,6 +2721,9 @@ function renderCapPlan() {
   if (view === 'adjustment') {
     badge.className = 'cp-view-badge editable';
     badge.textContent = 'EDITABLE';
+  } else if (view === 'working') {
+    badge.className = 'cp-view-badge editable';
+    badge.textContent = 'FORECAST EDITABLE';
   } else {
     badge.className = 'cp-view-badge readonly';
     badge.textContent = 'READ ONLY';
@@ -2739,16 +2743,20 @@ function renderCapPlan() {
   }
 
   // Get months for this queue in the selected year from synth data
-  const months = [];
+  const allMonths = [];
   for (let m = 1; m <= 12; m++) {
     const rec = synthRecords.find(r => r.yr === year && r.mo === m);
     if (rec) {
-      // Build a compatible q and m object from the synth record
       const qData = { ...rec, qid, qn: `Plan ${qIdx}` };
       const mData = { working_days: rec.working_days, vol: rec.vol, month_label: rec.ml };
-      months.push({ mo: m, q: qData, m: mData });
+      allMonths.push({ mo: m, q: qData, m: mData });
     }
   }
+
+  // Filter: Actuals/Unadjusted/Adjustment show only actual months; Working shows all
+  const months = (view === 'working')
+    ? allMonths
+    : allMonths.filter(({q}) => !q.fc);
 
   if (months.length === 0) {
     document.getElementById('cp-thead').innerHTML = '<tr><th colspan="13" style="text-align:center;color:var(--text3);">No data available for this year</th></tr>';
@@ -2855,12 +2863,36 @@ function renderCapPlan() {
       } else if (view === 'adjustment') {
         // Editable cells for non-derived metrics
         if (metric.derived) {
-          // Derived metrics can't be adjusted — show dash
           html += `<td class="${fc ? 'cp-fc' : 'cp-act'}" style="color:var(--text3);">—</td>`;
         } else {
           const inputVal = adj !== 0 ? adj : '';
           const placeholder = '0';
           html += `<td class="cp-editable"><input type="number" value="${inputVal}" placeholder="${placeholder}" step="${metric.adjType === 'float' ? '0.1' : '1'}" onchange="onCPAdjChange('${qid}',${year},${mo},'${metric.key}',this.value,'${metric.adjType}')" /></td>`;
+        }
+
+      } else if (view === 'working') {
+        // Working view: actuals are read-only (with adjustments applied), forecast cells are editable
+        if (fc) {
+          // Forecast month — editable for non-derived metrics
+          if (metric.derived) {
+            const display = metric.fmt(baseVal);
+            let style = 'color:var(--text3);';
+            if (metric.colorFn) style = `color:${metric.colorFn(baseVal)};font-weight:600;`;
+            html += `<td class="cp-fc" style="${style}">${display}</td>`;
+          } else {
+            const totalVal = typeof baseVal === 'number' ? baseVal + adj : baseVal;
+            const inputVal = adj !== 0 ? adj : '';
+            html += `<td class="cp-editable" style="background:var(--blue-pale);"><input type="number" value="${inputVal}" placeholder="${metric.fmt(baseVal)}" step="${metric.adjType === 'float' ? '0.1' : '1'}" onchange="onCPAdjChange('${qid}',${year},${mo},'${metric.key}',this.value,'${metric.adjType}')" style="background:var(--blue-pale);" /></td>`;
+          }
+        } else {
+          // Actual month — read-only, show base + adjustment (same as Actuals view)
+          const totalVal = metric.derived ? baseVal : (typeof baseVal === 'number' ? baseVal + adj : baseVal);
+          const display = metric.fmt(totalVal);
+          let style = '';
+          if (metric.colorFn) style = `color:${metric.colorFn(totalVal)};font-weight:600;`;
+          else if (metric.colorOverride) style = `color:${metric.colorOverride};font-weight:600;`;
+          if (adj !== 0 && !metric.derived) style += 'font-style:italic;';
+          html += `<td class="cp-act" style="${style}">${display}${adj !== 0 && !metric.derived ? '<span class="cp-dirty-dot" title="Has adjustment"></span>' : ''}</td>`;
         }
       }
     });
