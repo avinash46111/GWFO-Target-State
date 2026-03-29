@@ -1263,7 +1263,7 @@ body {
       <div class="lt-nav-title">LT Planning</div>
     </div>
     <div class="lt-steps">
-      <div class="lt-step done"   id="nav-1" onclick="ltStep(1)">
+      <div class="lt-step active" id="nav-1" onclick="ltStep(1)">
         <div class="lt-step-num">1</div>
         <div><div class="lt-step-name">Data Actualization</div><div class="lt-step-hint">Feb 2026 actuals</div></div>
       </div>
@@ -1273,7 +1273,7 @@ body {
         <div><div class="lt-step-name">HC Reconciliation</div><div class="lt-step-hint">NICE ↔ PAW</div></div>
       </div>
       <div class="lt-step-div"></div>
-      <div class="lt-step active" id="nav-3" onclick="ltStep(3)">
+      <div class="lt-step"        id="nav-3" onclick="ltStep(3)">
         <div class="lt-step-num">3</div>
         <div><div class="lt-step-name">Forecasting</div><div class="lt-step-hint">12-month LT plan</div></div>
       </div>
@@ -1295,7 +1295,7 @@ body {
   <div class="lt-main">
     <div class="lt-topbar">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span class="lt-topbar-title" id="lt-title">Forecasting</span>
+        <span class="lt-topbar-title" id="lt-title">Data Actualization</span>
         <div class="lt-hierarchy">
           <div class="lt-hier-group">
             <span class="lt-hier-label">Business</span>
@@ -1603,6 +1603,8 @@ body {
     <div class="cp-toolbar-right">
       <button class="cp-clear-btn" id="cp-clear-adj-btn" style="display:none;" onclick="clearCPAdjustments()">✕ Clear adjustments</button>
       <span id="cp-adj-count" style="font-size:10px;color:var(--text3);font-family:var(--mono);display:none;"></span>
+      <input type="file" id="cp-file-input" accept=".xlsx,.xls" style="display:none;" onchange="alert('File selected: ' + this.files[0]?.name + '\n\nUpload functionality will be available in the production version.'); this.value='';" />
+      <button class="lt-btn primary" id="cp-upload-btn" style="font-size:10px;padding:4px 10px;" onclick="document.getElementById('cp-file-input').click()">↑ Upload data from file</button>
       <button class="lt-btn ghost" style="font-size:10px;padding:4px 10px;" onclick="alert('Export coming soon')">↓ Export</button>
     </div>
   </div>
@@ -2729,6 +2731,10 @@ function renderCapPlan() {
     badge.textContent = 'READ ONLY';
   }
 
+  // Show upload button only for editable views
+  const uploadBtn = document.getElementById('cp-upload-btn');
+  if (uploadBtn) uploadBtn.style.display = (view === 'adjustment' || view === 'working') ? '' : 'none';
+
   // Update adj count / clear btn
   const adjCount = countCPAdj(qid);
   const adjCountEl = document.getElementById('cp-adj-count');
@@ -2927,7 +2933,7 @@ function initLTModule() {
   ltSelectedQueues = new Set(ACTIVE_QIDS);
   buildLTQFList();
   updateHierLabels();
-  renderPanel3();
+  ltStep(1);
 }
 
 // ── FORECAST DETAIL ────────────────────────────────────────────
