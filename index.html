@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -21,6 +21,10 @@
   --green-lt: #E8F5EE;
   --amber:    #B45309;
   --amber-lt: #FEF3E2;
+  --purple:   #5B21B6;
+  --purple2:  #7C3AED;
+  --purple-lt:#EDE9FE;
+  --purple-pale:#F5F3FF;
   --bg:       #F2F6FA;
   --card:     #fff;
   --border:   #C8D8E8;
@@ -150,6 +154,7 @@ body {
 .card.cg .card-bar { background: var(--green); }
 .card.cr .card-bar { background: var(--red); }
 .card.ca .card-bar { background: var(--amber); }
+.card.cp .card-bar { background: var(--purple); }
 .card-body { padding: 20px 20px 14px; flex: 1; display: flex; flex-direction: column; }
 .icon-wrap {
   width: 44px; height: 44px; border-radius: 10px;
@@ -160,16 +165,19 @@ body {
 .card.cg .icon-wrap { background: var(--green-lt); border-color: #B8DECA; }
 .card.cr .icon-wrap { background: var(--red-lt);   border-color: #F5C5C0; }
 .card.ca .icon-wrap { background: var(--amber-lt); border-color: #F5D9A8; }
+.card.cp .icon-wrap { background: var(--purple-pale); border-color: var(--purple-lt); }
 .ci { width: 22px; height: 22px; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .card.cb .ci { stroke: var(--blue); }
 .card.cg .ci { stroke: var(--green); }
 .card.cr .ci { stroke: var(--red); }
 .card.ca .ci { stroke: var(--amber); }
+.card.cp .ci { stroke: var(--purple); }
 .card-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; margin-bottom: 5px; font-family: var(--mono); }
 .card.cb .card-lbl { color: var(--blue); }
 .card.cg .card-lbl { color: var(--green); }
 .card.cr .card-lbl { color: var(--red); }
 .card.ca .card-lbl { color: var(--amber); }
+.card.cp .card-lbl { color: var(--purple); }
 .card-title { font-size: 17px; font-weight: 700; color: var(--blue); margin-bottom: 7px; }
 .card-desc  { font-size: 12px; color: var(--text2); line-height: 1.65; flex: 1; }
 .card-badge {
@@ -180,6 +188,7 @@ body {
 .card.cb .card-badge { background: var(--blue-pale); color: var(--blue); border: 1px solid var(--blue-lt); }
 .card.cg .card-badge { background: var(--green-lt); color: var(--green); border: 1px solid #B8DECA; }
 .card.cr .card-badge { background: var(--red-lt);   color: var(--red);   border: 1px solid #F5C5C0; }
+.card.cp .card-badge { background: var(--purple-pale); color: var(--purple); border: 1px solid var(--purple-lt); }
 .card-caps { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-lt); display: flex; flex-direction: column; gap: 6px; }
 .cap { display: flex; align-items: flex-start; gap: 7px; font-size: 11px; color: var(--text2); }
 .cap-dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; opacity: .4; transition: opacity .15s; }
@@ -188,6 +197,7 @@ body {
 .card.cg .cap-dot { background: var(--green); }
 .card.cr .cap-dot { background: var(--red); }
 .card.ca .cap-dot { background: var(--amber); }
+.card.cp .cap-dot { background: var(--purple); }
 .card-footer { padding: 10px 20px 14px; display: flex; align-items: center; justify-content: space-between; }
 .card-cta {
   font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px;
@@ -197,6 +207,7 @@ body {
 .card.cb .card-cta { color: var(--blue); }
 .card.cg .card-cta { color: var(--green); }
 .card.cr .card-cta { color: var(--red); }
+.card.cp .card-cta { color: var(--purple); }
 .cta-arr { transition: transform .15s; }
 .card:hover .cta-arr { transform: translateX(3px); }
 .live-badge { display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--red); }
@@ -811,6 +822,185 @@ body {
   .adj-grid { grid-template-columns: 1fr; }
 }
 
+/* ══════════════════════════════════════════
+   GOVERNANCE WORKSPACE
+   ══════════════════════════════════════════ */
+#s-gov { background: var(--bg); flex-direction: row !important; }
+
+.gov-nav {
+  width: 200px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+}
+.gov-nav-hdr {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-lt);
+  background: linear-gradient(135deg, var(--purple-pale) 0%, var(--card) 100%);
+}
+.gov-nav-tag   { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--purple); font-family: var(--mono); }
+.gov-nav-title { font-size: 13px; font-weight: 700; color: var(--purple); margin-top: 3px; }
+
+.gov-steps { flex: 1; padding: 8px 0; display: flex; flex-direction: column; }
+.gov-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer;
+  transition: background .15s;
+  position: relative; border-left: 3px solid transparent;
+}
+.gov-step:hover  { background: var(--purple-pale); }
+.gov-step.active { background: var(--purple-pale); border-left-color: var(--purple2); }
+.gov-step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--border);
+  font-size: 9px; font-weight: 700; font-family: var(--mono);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); flex-shrink: 0; transition: all .15s;
+}
+.gov-step.active .gov-step-num { background: var(--purple2); border-color: var(--purple2); color: #fff; }
+.gov-step.done   .gov-step-num { background: var(--green); border-color: var(--green); color: #fff; }
+.gov-step-name { font-size: 12px; font-weight: 600; color: var(--text2); line-height: 1.2; }
+.gov-step.active .gov-step-name { color: var(--purple); font-weight: 700; }
+.gov-step-hint   { font-size: 9px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+.gov-step-div    { height: 1px; background: var(--border-lt); margin: 3px 16px; }
+.gov-nav-foot { padding: 12px 16px; border-top: 1px solid var(--border-lt); }
+
+.gov-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.gov-topbar {
+  height: 48px; background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; flex-shrink: 0;
+}
+.gov-topbar-title { font-size: 14px; font-weight: 700; color: var(--purple); }
+.gov-topbar-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-left: 10px; }
+.gov-topbar-right { display: flex; gap: 7px; }
+.gov-pill {
+  font-size: 9px; font-weight: 700; font-family: var(--mono);
+  letter-spacing: .3px; padding: 3px 9px; border-radius: 4px; border: 1px solid;
+}
+.gov-pill.purple { color: var(--purple); border-color: var(--purple-lt); background: var(--purple-pale); }
+.gov-pill.green  { color: var(--green); border-color: #B8DECA; background: var(--green-lt); }
+.gov-pill.amber  { color: var(--amber); border-color: #F5D9A8; background: var(--amber-lt); }
+
+.gov-panels { flex: 1; overflow: hidden; position: relative; min-height: 0; }
+.gov-panel  { position: absolute; inset: 0; overflow-y: auto; padding: 20px; display: none; }
+.gov-panel.active { display: block; }
+.gov-panel::-webkit-scrollbar { width: 4px; }
+.gov-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* SFE-specific components */
+.sfe-score-ring {
+  width: 90px; height: 90px; border-radius: 50%;
+  background: conic-gradient(var(--purple2) 0%, var(--purple2) var(--pct, 0%), var(--purple-pale) var(--pct, 0%));
+  display: flex; align-items: center; justify-content: center;
+  position: relative; flex-shrink: 0;
+}
+.sfe-score-inner {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.sfe-score-val { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--purple); line-height: 1; }
+.sfe-score-lbl { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+.sfe-status-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; padding: 3px 10px;
+  border-radius: 4px; border: 1px solid;
+}
+.sfe-status-badge.pass { background: var(--green-lt); color: var(--green); border-color: #B8DECA; }
+.sfe-status-badge.warn { background: var(--amber-lt); color: var(--amber); border-color: #F5D9A8; }
+.sfe-status-badge.fail { background: var(--red-lt);   color: var(--red);   border-color: #F5C5C0; }
+.sfe-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+.sfe-bar-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-lt); }
+.sfe-bar-lbl { font-size: 12px; color: var(--text2); flex: 1; }
+.sfe-bar-track { flex: 2; height: 8px; background: var(--border-lt); border-radius: 4px; overflow: hidden; }
+.sfe-bar-fill  { height: 100%; border-radius: 4px; transition: width .6s ease; }
+.sfe-bar-val   { font-size: 12px; font-family: var(--mono); font-weight: 700; min-width: 52px; text-align: right; }
+.sfe-bar-target{ font-size: 9px; color: var(--text3); font-family: var(--mono); min-width: 55px; text-align: right; }
+
+/* Audit log */
+.audit-entry {
+  display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border-lt);
+  align-items: flex-start;
+}
+.audit-icon {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  margin-top: 2px;
+}
+.audit-icon.approve { background: var(--green-lt); color: var(--green); }
+.audit-icon.change  { background: var(--blue-pale); color: var(--blue3); }
+.audit-icon.breach  { background: var(--red-lt);   color: var(--red); }
+.audit-icon.note    { background: var(--amber-lt); color: var(--amber); }
+.audit-body { flex: 1; }
+.audit-title { font-size: 12px; font-weight: 700; color: var(--text); }
+.audit-user  { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+.audit-time  { font-size: 9px; color: var(--text3); font-family: var(--mono); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+
+/* Regulatory cards */
+.reg-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+  padding: 16px 18px; border-top: 3px solid var(--border); flex: 1;
+}
+.reg-card.compliant { border-top-color: var(--green); }
+.reg-card.review    { border-top-color: var(--amber); }
+.reg-card.breach    { border-top-color: var(--red); }
+.reg-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); font-family: var(--mono); margin-bottom: 8px; }
+.reg-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.reg-desc  { font-size: 11px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+.reg-metric { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-lt); font-size: 11px; }
+.reg-metric:last-child { border-bottom: none; }
+
+/* Attestation */
+.attest-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 24px; margin-top: 12px; border-top: 4px solid var(--purple);
+}
+.attest-title { font-size: 15px; font-weight: 700; color: var(--purple); margin-bottom: 6px; }
+.attest-sub   { font-size: 12px; color: var(--text2); margin-bottom: 18px; line-height: 1.6; }
+.attest-checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.attest-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
+.attest-check.pass { color: var(--green); }
+.attest-check.warn { color: var(--amber); }
+.attest-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.attest-field { display: flex; flex-direction: column; gap: 5px; }
+.attest-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); font-family: var(--mono); }
+.attest-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px 10px; font-size: 12px; color: var(--text); font-family: var(--sans); outline: none;
+  transition: border-color .15s;
+}
+.attest-input:focus { border-color: var(--purple2); background: var(--card); }
+.btn-attest {
+  padding: 10px 24px; background: var(--purple); color: #fff;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: var(--sans); transition: opacity .15s;
+}
+.btn-attest:hover { opacity: .9; }
+
+/* Responsive Gov workspace */
+@media (max-width: 768px) {
+  #s-gov { flex-direction: column !important; }
+  .gov-nav { width: 100%; flex-direction: row; height: auto; border-right: none; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .gov-nav-hdr { display: none; }
+  .gov-nav-foot { display: none; }
+  .gov-steps { flex-direction: row; padding: 0; gap: 0; flex: 1; }
+  .gov-step { flex-direction: column; align-items: center; padding: 8px 10px; gap: 4px; border-left: none; border-bottom: 2px solid transparent; flex: 1; min-width: 70px; text-align: center; }
+  .gov-step.active { border-bottom-color: var(--purple2); }
+  .gov-step-hint { display: none; }
+  .gov-step-name { font-size: 10px; }
+  .gov-step-div { display: none; }
+  .gov-topbar { padding: 0 12px; }
+  .gov-topbar-sub { display: none; }
+  .gov-topbar-right { display: none; }
+  .gov-panel { padding: 12px; }
+  .attest-form { grid-template-columns: 1fr; }
+  .reg-card { flex: none; }
+}
 </style>
 </head>
 <body>
@@ -872,10 +1062,10 @@ body {
       </div>
       <div class="card-footer"><div class="card-cta">Enter workspace <span class="cta-arr">→</span></div></div>
     </div>
-    <div class="card cr" onclick="alert('Senior Leader — coming soon')">
+    <div class="card cr" onclick="show('gov','forward')">
       <div class="card-bar"></div>
       <div class="card-body">
-        <div class="icon-wrap"><svg class="ci" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <div class="icon-wrap"><svg class="ci" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
         <div class="card-lbl">Persona 03</div>
         <div class="card-title">Senior Leader</div>
         <div class="card-desc">You need the strategic picture fast. You review monthly plans, approve hiring decisions and understand variance at headline level.</div>
@@ -883,6 +1073,21 @@ body {
           <div class="cap"><div class="cap-dot"></div>Executive KPI dashboard</div>
           <div class="cap"><div class="cap-dot"></div>Hiring &amp; FTE approvals</div>
           <div class="cap"><div class="cap-dot"></div>Forward risk &amp; scenario outlook</div>
+        </div>
+      </div>
+      <div class="card-footer"><div class="card-cta">Enter workspace <span class="cta-arr">→</span></div></div>
+    </div>
+    <div class="card cp" onclick="show('gov','forward')">
+      <div class="card-bar"></div>
+      <div class="card-body">
+        <div class="icon-wrap"><svg class="ci" viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.33C17.25 22.15 21 17.25 21 12V7L12 2z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="card-lbl">Persona 04</div>
+        <div class="card-title">Governance</div>
+        <div class="card-desc">You own the compliance and audit framework. You monitor SFE scores, review regulatory adherence, manage the audit trail and provide formal attestation of the planning cycle.</div>
+        <div class="card-caps">
+          <div class="cap"><div class="cap-dot"></div>SFE compliance monitoring</div>
+          <div class="cap"><div class="cap-dot"></div>Regulatory reporting &amp; audit trail</div>
+          <div class="cap"><div class="cap-dot"></div>Formal sign-off &amp; attestation</div>
         </div>
       </div>
       <div class="card-footer"><div class="card-cta">Enter workspace <span class="cta-arr">→</span></div></div>
@@ -1238,6 +1443,260 @@ body {
   </div><!-- /lt-main -->
 </div><!-- /s-lt -->
 
+
+
+<!-- ══ SCREEN: GOVERNANCE ══ -->
+<div class="screen" id="s-gov">
+  <nav class="gov-nav">
+    <div class="gov-nav-hdr">
+      <div class="gov-nav-tag">Governance</div>
+      <div class="gov-nav-title">SFE &amp; Compliance</div>
+    </div>
+    <div class="gov-steps">
+      <div class="gov-step active" id="gnav-1" onclick="govStep(1)">
+        <div class="gov-step-num">1</div>
+        <div><div class="gov-step-name">Compliance Dashboard</div><div class="gov-step-hint">SFE overview</div></div>
+      </div>
+      <div class="gov-step-div"></div>
+      <div class="gov-step" id="gnav-2" onclick="govStep(2)">
+        <div class="gov-step-num">2</div>
+        <div><div class="gov-step-name">SFE Review</div><div class="gov-step-hint">Queue detail</div></div>
+      </div>
+      <div class="gov-step-div"></div>
+      <div class="gov-step" id="gnav-3" onclick="govStep(3)">
+        <div class="gov-step-num">3</div>
+        <div><div class="gov-step-name">Audit Trail</div><div class="gov-step-hint">Change log</div></div>
+      </div>
+      <div class="gov-step-div"></div>
+      <div class="gov-step" id="gnav-4" onclick="govStep(4)">
+        <div class="gov-step-num">4</div>
+        <div><div class="gov-step-name">Regulatory Reporting</div><div class="gov-step-hint">Reg compliance</div></div>
+      </div>
+      <div class="gov-step-div"></div>
+      <div class="gov-step" id="gnav-5" onclick="govStep(5)">
+        <div class="gov-step-num">5</div>
+        <div><div class="gov-step-name">Sign-off &amp; Attestation</div><div class="gov-step-hint">Formal approval</div></div>
+      </div>
+    </div>
+    <div class="gov-nav-foot">
+      <button class="back-btn" onclick="show('persona','back')">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to personas
+      </button>
+    </div>
+  </nav>
+
+  <div class="gov-main">
+    <div class="gov-topbar">
+      <div style="display:flex;align-items:center;">
+        <span class="gov-topbar-title" id="gov-title">Compliance Dashboard</span>
+        <span class="gov-topbar-sub">SFE &amp; GOVERNANCE &middot; PLANNING CYCLE MAR 2026</span>
+      </div>
+      <div class="gov-topbar-right">
+        <div class="gov-pill purple">Mar 2026 cycle</div>
+        <div class="gov-pill green">SFE 89.4% &mdash; compliant</div>
+        <div class="gov-pill amber">1 queue flagged</div>
+      </div>
+    </div>
+
+    <div class="gov-panels">
+
+      <!-- PANEL G1: COMPLIANCE DASHBOARD -->
+      <div class="gov-panel active" id="gp-1">
+        <div class="dp-sec">Overall SFE Score</div>
+        <div class="dp-row">
+          <div class="dp-card" style="display:flex;gap:20px;align-items:center;min-width:260px;">
+            <div class="sfe-score-ring" style="--pct:89.4%;">
+              <div class="sfe-score-inner">
+                <div class="sfe-score-val">89.4%</div>
+                <div class="sfe-score-lbl">SFE Score</div>
+              </div>
+            </div>
+            <div>
+              <div class="dp-card-title">Schedule Fit Efficiency</div>
+              <div class="dp-card-sub">Weighted composite &middot; All 10 queues</div>
+              <div class="sfe-status-badge pass" style="margin-top:8px;"><div class="sfe-status-dot"></div>Compliant &mdash; above 88% threshold</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.6;">SFE = (Scheduled &divide; Peak Need) &times; Availability %. Target: &ge;88%.</div>
+            </div>
+          </div>
+          <div class="dp-card wide">
+            <div class="dp-card-title">Compliance KPIs &mdash; Feb 2026</div>
+            <div class="dp-card-sub">Source: Avaya + NICE actuals &middot; Citi governance policy v4.2</div>
+            <div class="dp-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:8px;">
+              <div class="dp-metric"><div class="dp-metric-val dn">89.4%</div><div class="dp-metric-lbl">SFE Score</div><div class="dp-metric-delta dn">+0.6pp vs Jan</div></div>
+              <div class="dp-metric"><div class="dp-metric-val dn">70.3%</div><div class="dp-metric-lbl">Avg availability</div><div class="dp-metric-delta dn">+0.2pp</div></div>
+              <div class="dp-metric"><div class="dp-metric-val up">29.2%</div><div class="dp-metric-lbl">Avg shrinkage</div><div class="dp-metric-delta up">tgt 28%</div></div>
+              <div class="dp-metric"><div class="dp-metric-val dn">95.1%</div><div class="dp-metric-lbl">SLA adherence</div><div class="dp-metric-delta">Target 95%</div></div>
+              <div class="dp-metric"><div class="dp-metric-val neu">9</div><div class="dp-metric-lbl">Queues compliant</div><div class="dp-metric-delta">1 flagged</div></div>
+              <div class="dp-metric"><div class="dp-metric-val dn">0</div><div class="dp-metric-lbl">Open escalations</div><div class="dp-metric-delta">Target 0</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dp-sec">Queue-level SFE compliance &mdash; Feb 2026</div>
+        <div class="dp-card full">
+          <div class="dp-card-title">SFE by queue &mdash; individual compliance status</div>
+          <div class="dp-card-sub">SFE = (Scheduled &divide; Peak need) &times; Availability % &middot; Target &ge;88% per Citi Gov policy v4.2</div>
+          <table class="dp-table">
+            <thead><tr><th>Queue</th><th>HC</th><th>Scheduled</th><th>Peak Need</th><th>Fit %</th><th>Availability</th><th>SFE Score</th><th>Target</th><th>Status</th></tr></thead>
+            <tbody id="gov-sfe-tbody"></tbody>
+          </table>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="lt-btn primary" onclick="govStep(2)">&#8594; Drill into SFE Review</button>
+            <button class="lt-btn ghost">&#8595; Export compliance report</button>
+          </div>
+        </div>
+
+        <div class="dp-sec">12-week SFE trend</div>
+        <div class="dp-card full">
+          <div class="dp-card-title">SFE score &mdash; week on week (last 12 weeks)</div>
+          <div class="dp-card-sub">Red dashed line = 88% compliance threshold</div>
+          <div style="position:relative;height:180px;"><canvas id="gov-sfe-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- PANEL G2: SFE REVIEW -->
+      <div class="gov-panel" id="gp-2">
+        <div class="dp-sec">SFE decomposition &mdash; Feb 2026</div>
+        <div class="dp-row">
+          <div class="dp-card">
+            <div class="dp-card-title">Schedule Fit component</div>
+            <div class="dp-card-sub">Scheduled &divide; Peak need &middot; All queues</div>
+            <div style="margin-top:10px;" id="sfe-fit-bars"></div>
+          </div>
+          <div class="dp-card">
+            <div class="dp-card-title">Efficiency component</div>
+            <div class="dp-card-sub">Availability % by queue &middot; Feb 2026</div>
+            <div style="margin-top:10px;" id="sfe-eff-bars"></div>
+          </div>
+        </div>
+
+        <div class="dp-sec">SFE variance analysis &mdash; root causes</div>
+        <div class="dp-card full">
+          <div class="dp-card-title">Drivers of SFE variance vs target &mdash; Feb 2026</div>
+          <div class="dp-card-sub">Identifies systematic patterns affecting SFE score across the operation</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+            <div class="wf-item"><div class="wf-name"><div>AHT over-run &mdash; CS Costco + CS THD + CS BBY</div><div class="wf-sub">AHT 3.1% above plan &middot; Drives availability compression</div></div><div class="wf-bar"><div class="wf-fill" style="width:70%;background:var(--red);"></div></div><div class="wf-impact" style="color:var(--red);">-1.4pp SFE</div><div class="wf-pct">root cause</div></div>
+            <div class="wf-item"><div class="wf-name"><div>Shrinkage above plan &mdash; multiple queues</div><div class="wf-sub">29.2% actual vs 28.0% plan &middot; Unexplained absence</div></div><div class="wf-bar"><div class="wf-fill" style="width:50%;background:var(--amber);"></div></div><div class="wf-impact" style="color:var(--amber);">-0.9pp SFE</div><div class="wf-pct">secondary</div></div>
+            <div class="wf-item"><div class="wf-name"><div>IVR deflection under-delivery</div><div class="wf-sub">Digital channel: 62% vs 70% target &middot; Higher inbound volume</div></div><div class="wf-bar"><div class="wf-fill" style="width:40%;background:var(--amber);"></div></div><div class="wf-impact" style="color:var(--amber);">-0.5pp SFE</div><div class="wf-pct">tertiary</div></div>
+            <div class="wf-item" style="background:var(--green-lt);border-color:#B8DECA;"><div class="wf-name"><div>Cross-skill efficiency improvement</div><div class="wf-sub">Cards cluster +2pp cross-skill utilisation</div></div><div class="wf-bar"><div class="wf-fill" style="width:30%;background:var(--green);"></div></div><div class="wf-impact" style="color:var(--green);">+0.8pp SFE</div><div class="wf-pct">offset</div></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="lt-btn primary" onclick="govStep(3)">&#8594; View audit trail</button>
+            <button class="lt-btn ghost">&#8595; Export SFE breakdown</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL G3: AUDIT TRAIL -->
+      <div class="gov-panel" id="gp-3">
+        <div class="dp-sec">Planning event log &mdash; Mar 2026 cycle</div>
+        <div class="dp-card full">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="dp-card-title">Full audit trail &mdash; all planning actions</div>
+            <div style="display:flex;gap:6px;">
+              <select id="audit-filter" onchange="filterAudit()" style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text2);background:var(--card);font-family:var(--sans);cursor:pointer;outline:none;">
+                <option value="all">All events</option>
+                <option value="approve">Approvals</option>
+                <option value="change">HC changes</option>
+                <option value="breach">SFE breaches</option>
+                <option value="note">Notes</option>
+              </select>
+              <button class="lt-btn ghost" style="font-size:11px;padding:5px 12px;">&#8595; Export log</button>
+            </div>
+          </div>
+          <div id="audit-log" style="max-height:480px;overflow-y:auto;padding-right:4px;"></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button class="lt-btn primary" onclick="govStep(4)">&#8594; Regulatory reporting</button>
+        </div>
+      </div>
+
+      <!-- PANEL G4: REGULATORY REPORTING -->
+      <div class="gov-panel" id="gp-4">
+        <div class="dp-sec">Regulatory compliance status &mdash; Mar 2026</div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          <div class="reg-card compliant">
+            <div class="reg-name">Reg-G / MOR Policy</div>
+            <div class="reg-title">Operational Risk Governance</div>
+            <div class="reg-desc">WFM planning outputs align with Citi Operational Risk framework. SFE &ge;88%, staffing ratios within MOR limits.</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="sfe-status-badge pass"><div class="sfe-status-dot"></div>Compliant</div><span style="font-size:10px;color:var(--text3);">Last reviewed: 28 Feb 2026</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">SFE Score</span><span style="font-family:var(--mono);font-weight:700;color:var(--green);">89.4%</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Threshold</span><span style="font-family:var(--mono);color:var(--text3);">&ge;88.0%</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Status</span><span style="color:var(--green);font-weight:700;">&#10003; Pass</span></div>
+          </div>
+          <div class="reg-card review">
+            <div class="reg-name">Basel III / BCBS 239</div>
+            <div class="reg-title">Data Quality &amp; Risk Reporting</div>
+            <div class="reg-desc">Volume model MAPE at 88.6% &mdash; below 90% BCBS threshold. Model recalibration flagged. Waiver approved by CCRO.</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="sfe-status-badge warn"><div class="sfe-status-dot"></div>Needs Review</div><span style="font-size:10px;color:var(--text3);">Flagged: 1 Mar 2026</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Volume MAPE</span><span style="font-family:var(--mono);font-weight:700;color:var(--amber);">88.6%</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">BCBS 239 threshold</span><span style="font-family:var(--mono);color:var(--text3);">&ge;90.0%</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Status</span><span style="color:var(--amber);font-weight:700;">&#9888; Waiver filed</span></div>
+          </div>
+          <div class="reg-card compliant">
+            <div class="reg-name">MiFID II / ESMA</div>
+            <div class="reg-title">Staffing Adequacy &amp; Record-Keeping</div>
+            <div class="reg-desc">Staffing adequacy documentation complete. HC reconciliation signed off. All SFE records archived per ESMA 6-year retention policy.</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="sfe-status-badge pass"><div class="sfe-status-dot"></div>Compliant</div><span style="font-size:10px;color:var(--text3);">Archived: 1 Mar 2026</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">HC reconciliation</span><span style="font-family:var(--mono);font-weight:700;color:var(--green);">Signed off</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Records retained</span><span style="font-family:var(--mono);color:var(--text3);">6 years &middot; ESMA</span></div>
+            <div class="reg-metric"><span style="color:var(--text2);">Status</span><span style="color:var(--green);font-weight:700;">&#10003; Archived</span></div>
+          </div>
+        </div>
+
+        <div class="dp-sec">SFE reporting pack &mdash; ready for distribution</div>
+        <div class="dp-card full">
+          <div class="dp-card-title">Regulatory submission checklist &mdash; Mar 2026 cycle</div>
+          <div class="dp-card-sub">All items must be green before sign-off can proceed in Step 5</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;" class="checklist">
+            <div class="check">&#10003; SFE score documented &mdash; 89.4% (compliant)</div>
+            <div class="check">&#10003; Queue-level SFE breakdown attached &mdash; all 10 queues</div>
+            <div class="check">&#10003; HC reconciliation signed off &mdash; NICE &harr; PAW matched</div>
+            <div class="check">&#10003; Actuals confirmed and loaded &mdash; Feb 2026 complete</div>
+            <div class="check">&#10003; Audit trail complete &mdash; all 14 planning events logged</div>
+            <div class="check warn">&#9888; BCBS 239: Volume model MAPE below threshold &mdash; waiver approved by CCRO (ref: WV-2026-031)</div>
+            <div class="check">&#10003; MiFID II records archived &mdash; 6-year retention confirmed</div>
+            <div class="check">&#10003; Reg-G risk attestation complete &mdash; ORM sign-off received</div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;">
+            <button class="lt-btn primary" onclick="govStep(5)">&#8594; Proceed to sign-off</button>
+            <button class="lt-btn ghost">&#8595; Download reporting pack</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL G5: SIGN-OFF & ATTESTATION -->
+      <div class="gov-panel" id="gp-5">
+        <div class="dp-sec">Governance sign-off &mdash; Mar 2026 planning cycle</div>
+        <div class="attest-card">
+          <div class="attest-title">Formal Attestation &mdash; WFM Governance Sign-off</div>
+          <div class="attest-sub">By completing this attestation, you confirm that the Mar 2026 WFM planning cycle has been reviewed for SFE compliance, regulatory adherence, and data quality. This record will be stored in the governance audit trail for 6 years per ESMA and MiFID II requirements.</div>
+          <div class="attest-checklist">
+            <div class="attest-check pass">&#10003; Step 1 &mdash; Compliance Dashboard reviewed. SFE 89.4% &mdash; above 88% threshold.</div>
+            <div class="attest-check pass">&#10003; Step 2 &mdash; SFE Review completed. AHT over-run root cause documented.</div>
+            <div class="attest-check pass">&#10003; Step 3 &mdash; Audit trail complete. 14 planning events logged and verified.</div>
+            <div class="attest-check warn">&#9888; Step 4 &mdash; BCBS 239 volume model MAPE waiver approved by CCRO (waiver ref: WV-2026-031).</div>
+            <div class="attest-check pass">&#10003; All regulatory requirements met subject to waiver noted above.</div>
+          </div>
+          <div class="attest-form">
+            <div class="attest-field"><div class="attest-label">Attesting Officer Name</div><input class="attest-input" id="att-name" placeholder="e.g. Jane Smith" /></div>
+            <div class="attest-field"><div class="attest-label">Title / Role</div><input class="attest-input" id="att-role" placeholder="e.g. Head of WFM Governance" /></div>
+            <div class="attest-field"><div class="attest-label">Employee ID</div><input class="attest-input" id="att-eid" placeholder="e.g. C-1234567" /></div>
+            <div class="attest-field"><div class="attest-label">Date of Attestation</div><input class="attest-input" id="att-date" type="date" value="2026-03-01" /></div>
+            <div class="attest-field" style="grid-column:1/-1;"><div class="attest-label">Notes (optional)</div><input class="attest-input" id="att-notes" placeholder="Any additional governance notes or exceptions..." /></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-attest" id="attest-btn" onclick="submitAttestation()">&#128271; Sign &amp; Attest &mdash; Mar 2026 Cycle</button>
+            <button class="lt-btn ghost" onclick="govStep(4)">&#8592; Back to regulatory review</button>
+            <button class="lt-btn ghost" onclick="alert('Draft saved to governance system')">Save draft</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /gov-panels -->
+  </div><!-- /gov-main -->
+</div><!-- /s-gov -->
 </div><!-- /stage -->
 
 <!-- ══ FORECAST DETAIL OVERLAY ══ -->
@@ -1418,6 +1877,7 @@ const BCRUMBS = {
   persona: () => `<span class="crumb active">Select persona</span>`,
   roles:   () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb active">Capacity Planner</span>`,
   lt:      () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb" onclick="show('roles','back')" style="cursor:pointer">Capacity Planner</span><span class="crumb-sep">›</span><span class="crumb active">Long Term Planning</span>`,
+  gov:     () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb active">Governance</span>`,
 };
 
 let cur = 'persona';
@@ -1438,6 +1898,7 @@ function show(next, dir) {
     document.getElementById('bcrumb').innerHTML = BCRUMBS[next]();
     cur = next;
     if (next === 'lt') { setTimeout(initLTModule, 80); }
+    if (next === 'gov') { setTimeout(initGovModule, 80); }
   }, 180);
 }
 
@@ -2149,6 +2610,262 @@ function updateSuggestions() {
   };
 })();
 
+
+
+// ══════════════════════════════════════════════════════════════════
+// GOVERNANCE MODULE — SFE Compliance & Attestation
+// ══════════════════════════════════════════════════════════════════
+
+const GOV_STEP_TITLES = {
+  1:'Compliance Dashboard', 2:'SFE Review',
+  3:'Audit Trail', 4:'Regulatory Reporting', 5:'Sign-off & Attestation'
+};
+
+function govStep(n) {
+  [1,2,3,4,5].forEach(i => {
+    document.getElementById('gnav-'+i)?.classList.remove('active','done');
+    document.getElementById('gp-'+i)?.classList.remove('active');
+  });
+  // Mark previous steps done
+  for (let i = 1; i < n; i++) {
+    document.getElementById('gnav-'+i)?.classList.add('done');
+  }
+  document.getElementById('gnav-'+n)?.classList.add('active');
+  document.getElementById('gp-'+n)?.classList.add('active');
+  document.getElementById('gov-title').textContent = GOV_STEP_TITLES[n];
+  if (n===1) renderGovPanel1();
+  if (n===2) renderGovPanel2();
+  if (n===3) renderGovPanel3();
+}
+
+// ── SFE data from Feb 2026 actuals ──────────────────────────────
+const SFE_QUEUE_DATA = [
+  { qid:'csrb',     name:'CS RB',            hc:550, ps:146, pn:70,  avail:69.85, target:88 },
+  { qid:'csrb_esc', name:'CS RB Escalations',hc:120, ps:32,  pn:18,  avail:69.42, target:88 },
+  { qid:'csaa',     name:'CS Cards AA',       hc:250, ps:66,  pn:32,  avail:69.41, target:88 },
+  { qid:'cscostco', name:'CS Cards Costco',   hc:200, ps:52,  pn:29,  avail:68.38, target:88 },
+  { qid:'csbc',     name:'CS Cards Branded',  hc:180, ps:48,  pn:26,  avail:69.84, target:88 },
+  { qid:'csthd',    name:'CS CRS THD',        hc:150, ps:39,  pn:20,  avail:68.74, target:88 },
+  { qid:'csbby',    name:'CS CRS BBY',        hc:130, ps:34,  pn:19,  avail:68.45, target:88 },
+  { qid:'cssears',  name:'CS CRS Sears',      hc:100, ps:26,  pn:15,  avail:69.64, target:88 },
+  { qid:'csspa',    name:'CS CRS Spanish',    hc:150, ps:40,  pn:21,  avail:71.05, target:88 },
+  { qid:'cscan',    name:'CS Canada',         hc:170, ps:46,  pn:24,  avail:71.00, target:88 },
+];
+
+const AUDIT_LOG_DATA = [
+  { type:'approve', icon:'✓', title:'Forecast approved and locked — FY2025-26', user:'A. Kapoor · Head of LT Planning', time:'01 Mar 2026, 14:32', note:'Signed off after model health review.' },
+  { type:'approve', icon:'✓', title:'HC reconciliation signed off — NICE ↔ PAW', user:'S. Patel · WFM Analyst', time:'28 Feb 2026, 11:15', note:'All 10 queues matched. No orphaned records.' },
+  { type:'change',  icon:'↕', title:'Manual adjustment added — CC product launch Q1', user:'A. Kapoor · Head of LT Planning', time:'27 Feb 2026, 16:04', note:'+30 FTE uplift for credit card launch campaign.' },
+  { type:'breach',  icon:'⚠', title:'Volume model MAPE below 90% threshold — flagged', user:'System · Auto-monitoring', time:'26 Feb 2026, 09:00', note:'3-month MAPE = 88.6%. Recalibration request filed.' },
+  { type:'change',  icon:'↕', title:'AHT adjustment applied — regulatory complexity Q3-Q4', user:'R. Singh · Senior WFM Analyst', time:'25 Feb 2026, 13:22', note:'+18s AHT for 6 queues. Regulatory change driver.' },
+  { type:'note',    icon:'i', title:'IVR deflection initiative ramp reviewed', user:'T. Chen · Digital Ops Lead', time:'24 Feb 2026, 10:48', note:'Phase 2 on track but 4 weeks behind FYF assumption.' },
+  { type:'approve', icon:'✓', title:'Feb 2026 actuals confirmed — all sources loaded', user:'S. Patel · WFM Analyst', time:'21 Feb 2026, 08:30', note:'Avaya + NICE data loaded. Quality checks passed.' },
+  { type:'change',  icon:'↕', title:'Shrinkage assumption revised up — 28.0% → 29.2%', user:'A. Kapoor · Head of LT Planning', time:'20 Feb 2026, 15:10', note:'Absence data trending higher than plan. Adjusted.' },
+  { type:'note',    icon:'i', title:'Cross-skill efficiency review completed', user:'R. Singh · Senior WFM Analyst', time:'18 Feb 2026, 09:55', note:'Cards cluster utilisation up 2pp. No action needed.' },
+  { type:'approve', icon:'✓', title:'Jan 2026 actuals confirmed and archived', user:'S. Patel · WFM Analyst', time:'05 Feb 2026, 08:30', note:'Data quality passed. Filed in compliance system.' },
+  { type:'breach',  icon:'⚠', title:'CS Cards Costco availability below 70% threshold', user:'System · Auto-monitoring', time:'03 Feb 2026, 09:00', note:'Availability: 68.4%. Shrinkage spike identified as cause.' },
+  { type:'change',  icon:'↕', title:'Q3 hiring plan start date moved — lead time extended', user:'A. Kapoor · Head of LT Planning', time:'28 Jan 2026, 14:00', note:'Lead time extended from 6 to 8 weeks for Q3 cohort.' },
+  { type:'note',    icon:'i', title:'SFE governance review cycle initiated — Mar 2026', user:'J. Okafor · Governance Manager', time:'15 Jan 2026, 09:00', note:'Annual governance review cycle commenced.' },
+  { type:'approve', icon:'✓', title:'Dec 2025 planning cycle formally closed', user:'J. Okafor · Governance Manager', time:'10 Jan 2026, 11:00', note:'All attestations complete. Archived in compliance system.' },
+];
+
+// ── PANEL G1 — COMPLIANCE DASHBOARD ────────────────────────────
+let govChartInst = null;
+let govPanel1Built = false;
+
+function renderGovPanel1() {
+  if (!govPanel1Built) {
+    renderSFETable();
+    buildGovSFEChart();
+    govPanel1Built = true;
+  }
+}
+
+function renderSFETable() {
+  const tbody = document.getElementById('gov-sfe-tbody');
+  if (!tbody || tbody.children.length > 0) return;
+
+  SFE_QUEUE_DATA.forEach(q => {
+    const fit = Math.min(100, (q.ps / q.pn * 100));
+    const sfe = (fit / 100) * q.avail;
+    const pass = sfe >= q.target;
+    const fitStr = fit >= 100 ? '100%+' : fit.toFixed(1) + '%';
+    const sfeStr = sfe.toFixed(1) + '%';
+    const statusHtml = pass
+      ? `<span class="sfe-status-badge pass" style="font-size:10px;padding:2px 8px;"><span class="sfe-status-dot"></span>Pass</span>`
+      : `<span class="sfe-status-badge fail" style="font-size:10px;padding:2px 8px;"><span class="sfe-status-dot"></span>Flagged</span>`;
+    const sfeCol = sfe >= 90 ? 'var(--green)' : sfe >= 88 ? 'var(--amber)' : 'var(--red)';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span style="display:inline-flex;align-items:center;gap:6px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${WFM.COLORS[q.qid]||'#888'};flex-shrink:0;"></span>
+        ${q.name}
+      </span></td>
+      <td class="mono">${WFM.fmtN(q.hc)}</td>
+      <td class="mono">${q.ps}</td>
+      <td class="mono">${q.pn}</td>
+      <td class="mono" style="color:var(--green);font-weight:700;">${fitStr}</td>
+      <td class="mono" style="color:${q.avail>=70?'var(--green)':'var(--amber)'};font-weight:700;">${q.avail.toFixed(1)}%</td>
+      <td class="mono" style="color:${sfeCol};font-weight:700;">${sfeStr}</td>
+      <td class="mono" style="color:var(--text3);">&ge;${q.target}%</td>
+      <td>${statusHtml}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Totals row
+  const totSched = SFE_QUEUE_DATA.reduce((s,r)=>s+r.ps,0);
+  const totPeak  = SFE_QUEUE_DATA.reduce((s,r)=>s+r.pn,0);
+  const avgAvail = (SFE_QUEUE_DATA.reduce((s,r)=>s+r.avail,0)/SFE_QUEUE_DATA.length);
+  const avgSFE   = ((totSched/totPeak)*avgAvail).toFixed(1);
+  const tr = document.createElement('tr');
+  tr.style.cssText = 'font-weight:700;background:var(--purple-pale);';
+  tr.innerHTML = `<td style="color:var(--purple);">Total / Avg</td>
+    <td class="mono">${WFM.fmtN(2000)}</td>
+    <td class="mono">${totSched}</td><td class="mono">${totPeak}</td>
+    <td class="mono" style="color:var(--green);">100%+</td>
+    <td class="mono" style="color:var(--green);">${avgAvail.toFixed(1)}%</td>
+    <td class="mono" style="color:var(--amber);font-weight:700;">${avgSFE}%</td>
+    <td class="mono" style="color:var(--text3);">&ge;88%</td>
+    <td><span class="sfe-status-badge pass" style="font-size:10px;padding:2px 8px;"><span class="sfe-status-dot"></span>Compliant</span></td>`;
+  tbody.appendChild(tr);
+}
+
+function buildGovSFEChart() {
+  const ctx = document.getElementById('gov-sfe-chart');
+  if (!ctx) return;
+  if (govChartInst) { govChartInst.destroy(); govChartInst = null; }
+  const weeks = ['W16','W17','W18','W19','W20','W21','W22','W23','W24','W25','W26','W27'];
+  const sfeData = [87.1, 87.8, 88.4, 88.9, 89.2, 88.7, 88.3, 88.9, 89.1, 89.4, 89.2, 89.4];
+  govChartInst = new Chart(ctx, {
+    data: {
+      labels: weeks,
+      datasets: [
+        { type:'line', label:'SFE Score', data: sfeData,
+          borderColor:'var(--purple2)', backgroundColor:'rgba(124,58,237,.08)',
+          borderWidth:2.5, pointRadius:3, pointBackgroundColor:'var(--purple2)',
+          tension:.4, fill:true },
+        { type:'line', label:'88% Threshold', data: new Array(12).fill(88),
+          borderColor:'rgba(217,38,28,.5)', borderDash:[6,4], borderWidth:1.5,
+          pointRadius:0, fill:false },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ backgroundColor:'#2d1b69', bodyColor:'#fff', padding:8,
+          callbacks:{ label: c => ` ${c.dataset.label}: ${c.raw}%` } } },
+      scales:{
+        x:{ ticks:{color:'#8898AA',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'} },
+        y:{ min:84, max:93, ticks:{color:'#8898AA',font:{size:10}, callback: v=>v+'%'}, grid:{color:'rgba(0,0,0,.04)'} }
+      }
+    }
+  });
+}
+
+// ── PANEL G2 — SFE REVIEW ───────────────────────────────────────
+let govPanel2Built = false;
+
+function renderGovPanel2() {
+  if (govPanel2Built) return;
+  govPanel2Built = true;
+
+  const fitEl = document.getElementById('sfe-fit-bars');
+  const effEl = document.getElementById('sfe-eff-bars');
+  if (!fitEl || !effEl) return;
+
+  SFE_QUEUE_DATA.forEach(q => {
+    const fit = Math.min(100, (q.ps / q.pn * 100));
+    const fitPct = fit >= 100 ? 100 : fit;
+    const fitCol = fit >= 100 ? 'var(--green)' : fit >= 88 ? 'var(--amber)' : 'var(--red)';
+    const fitStr = fit >= 100 ? '100%+' : fit.toFixed(1)+'%';
+    const effCol = q.avail >= 70 ? 'var(--green)' : 'var(--amber)';
+
+    fitEl.innerHTML += `<div class="sfe-bar-row">
+      <div class="sfe-bar-lbl">${q.name.replace('CS ','')}</div>
+      <div class="sfe-bar-track"><div class="sfe-bar-fill" style="width:${fitPct}%;background:${fitCol};"></div></div>
+      <div class="sfe-bar-val" style="color:${fitCol};">${fitStr}</div>
+      <div class="sfe-bar-target">tgt 100%</div>
+    </div>`;
+
+    effEl.innerHTML += `<div class="sfe-bar-row">
+      <div class="sfe-bar-lbl">${q.name.replace('CS ','')}</div>
+      <div class="sfe-bar-track"><div class="sfe-bar-fill" style="width:${(q.avail/80*100).toFixed(0)}%;background:${effCol};"></div></div>
+      <div class="sfe-bar-val" style="color:${effCol};">${q.avail.toFixed(1)}%</div>
+      <div class="sfe-bar-target">tgt 70%</div>
+    </div>`;
+  });
+}
+
+// ── PANEL G3 — AUDIT TRAIL ──────────────────────────────────────
+let govPanel3Built = false;
+
+function renderGovPanel3() {
+  if (govPanel3Built) return;
+  govPanel3Built = true;
+  renderAuditLog('all');
+}
+
+function renderAuditLog(filter) {
+  const container = document.getElementById('audit-log');
+  if (!container) return;
+  container.innerHTML = '';
+  const entries = filter === 'all' ? AUDIT_LOG_DATA : AUDIT_LOG_DATA.filter(e => e.type === filter);
+  entries.forEach(e => {
+    const iconClass = e.type;
+    container.innerHTML += `<div class="audit-entry">
+      <div class="audit-icon ${iconClass}">${e.icon}</div>
+      <div class="audit-body">
+        <div class="audit-title">${e.title}</div>
+        <div class="audit-user">${e.user}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;">${e.note}</div>
+      </div>
+      <div class="audit-time">${e.time}</div>
+    </div>`;
+  });
+  if (entries.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px;">No events match this filter.</div>';
+  }
+}
+
+function filterAudit() {
+  const f = document.getElementById('audit-filter')?.value || 'all';
+  renderAuditLog(f);
+}
+
+// ── GOVERNANCE INIT ───────────────────────────────────────────────
+function initGovModule() {
+  govStep(1);
+}
+
+// ── ATTESTATION ───────────────────────────────────────────────────
+function submitAttestation() {
+  const name  = document.getElementById('att-name')?.value.trim();
+  const role  = document.getElementById('att-role')?.value.trim();
+  const eid   = document.getElementById('att-eid')?.value.trim();
+  const date  = document.getElementById('att-date')?.value;
+  if (!name || !role || !eid) {
+    alert('Please complete the Name, Title, and Employee ID fields before attesting.');
+    return;
+  }
+  const timestamp = new Date().toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `<div style="background:#fff;border:2px solid #5B21B6;border-radius:12px;box-shadow:0 20px 60px rgba(91,33,182,.2);padding:36px 44px;text-align:center;max-width:440px;">
+    <div style="font-size:40px;margin-bottom:14px;">&#128271;</div>
+    <div style="font-size:17px;font-weight:700;color:#5B21B6;margin-bottom:8px;">Attestation Recorded</div>
+    <div style="font-size:12px;color:#4A5568;line-height:1.8;margin-bottom:6px;text-align:left;background:#F5F3FF;border-radius:6px;padding:12px 16px;border-left:3px solid #7C3AED;">
+      <strong>Mar 2026 WFM Governance Cycle</strong><br/>
+      Attested by: <strong>${name}</strong> &mdash; ${role}<br/>
+      Employee ID: ${eid}<br/>
+      Date: ${date || 'Not specified'}&nbsp;&nbsp;Logged: ${timestamp}<br/>
+      Waiver on file: WV-2026-031 (BCBS 239)
+    </div>
+    <div style="font-size:11px;color:#8898AA;margin-bottom:20px;margin-top:10px;">This record has been committed to the WFM governance audit trail and archived in the compliance management system per MiFID II requirements.</div>
+    <button onclick="this.closest('div[style]').remove();" style="background:#5B21B6;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans);">Done &#10003;</button>
+  </div>`;
+  document.body.appendChild(ov);
+}
 
 </script>
 </body>
