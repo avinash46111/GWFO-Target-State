@@ -1503,7 +1503,7 @@ body {
           <table class="dp-table">
             <thead><tr>
               <th>Plan</th><th>HC</th><th>Volume</th><th>AHT</th><th>Shrinkage</th>
-              <th>FTE Req</th><th>HC variance</th><th>X-skill cap</th><th>Action</th>
+              <th>FTE Req</th><th>HC variance</th><th>X-skill cap</th><th>Action</th><th>Refresh</th>
             </tr></thead>
             <tbody id="p3-queue-tbody"></tbody>
           </table>
@@ -1713,8 +1713,11 @@ body {
 
     <!-- FD TAB 3 -->
     <div class="fd-panel" id="fdp-3">
-      <div class="dp-sec">Active adjustments</div>
-      <div id="fd-adj-list"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="dp-sec" style="margin-bottom:0;">Active adjustments</div>
+        <button class="lt-btn primary" style="font-size:10px;padding:4px 12px;" onclick="openInitRepo()">📋 Initiatives Repository</button>
+      </div>
+      <div id="fd-adj-list" style="margin-top:10px;"></div>
       <div class="dp-sec" style="margin-top:16px;">Add new adjustment</div>
       <div class="adj-form">
         <div class="adj-form-title">New forecast adjustment</div>
@@ -1748,8 +1751,8 @@ body {
     <div class="fd-panel" id="fdp-5">
       <div class="dp-sec">WatsonX forecast model — methodology review</div>
       <div class="mm-toolbar">
-        <span style="font-size:11px;font-weight:600;color:var(--text2);">Plan:</span>
-        <select class="mm-q-select" id="mm-q-sel" onchange="renderModelMethodology()"></select>
+        <span style="font-size:11px;font-weight:600;color:var(--text2);" id="mm-plan-label"></span>
+        <select class="mm-q-select" id="mm-q-sel" onchange="renderModelMethodology()" style="display:none;"></select>
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);" id="mm-q-sub"></span>
       </div>
       <div class="mm-grid" id="mm-content"></div>
@@ -2530,42 +2533,73 @@ function renderP3Accuracy() {
 function renderP3ForecastAlerts(selectedQids) {
   const SEASONAL = [0, 1.12, 0.95, 1.02, 0.98, 0.94, 0.88, 0.86, 0.90, 0.96, 1.10, 1.08, 1.05];
   const alerts = [];
-  const THRESHOLD = 90; // accuracy below this triggers an alert
-
-  // Check each selected plan's T-3 accuracy for the most recent actual month (Feb 2026)
-  const actY = 2026, actM = 2;
-  let fcY = actY, fcM = actM - 3;
-  if (fcM <= 0) { fcM += 12; fcY--; }
+  const ACC_THRESHOLD = 90;
+  const VOL_DEV_THRESHOLD = 15; // % deviation in actuals
+  const AHT_DEV_THRESHOLD = 10; // % deviation in actuals
+  const DRIVER_CHG_THRESHOLD = 10; // % change in driver forecast
 
   const count = getQueueCount();
   for (let i = 1; i <= count; i++) {
     const qid = ACTIVE_QIDS[i-1];
     if (!qid || !selectedQids.includes(qid)) continue;
 
-    const key = `${hierState.business}|${hierState.func}|${i}`;
+    const key = hierState.business + '|' + hierState.func + '|' + i;
     const records = SYNTH_QUEUES[key];
     if (!records) continue;
 
-    const actRec = records.find(r => r.yr === actY && r.mo === actM);
-    const fcRec = records.find(r => r.yr === fcY && r.mo === fcM);
-    if (!actRec || !fcRec) continue;
+    const planName = 'Plan ' + i;
+    const feb26 = records.find(r => r.yr === 2026 && r.mo === 2);
+    const jan26 = records.find(r => r.yr === 2026 && r.mo === 1);
+    const nov25 = records.find(r => r.yr === 2025 && r.mo === 11);
 
-    const planName = `Plan ${i}`;
-    const varChecks = [
-      { name: 'Volume', actual: actRec.vol, forecast: Math.round(fcRec.vol * SEASONAL[actM] / (SEASONAL[fcM] || 1)) },
-      { name: 'AHT', actual: actRec.aht, forecast: fcRec.aht },
-      { name: 'Availability', actual: actRec.avail, forecast: fcRec.avail },
-      { name: 'Occupancy', actual: actRec.occ, forecast: fcRec.occ },
-      { name: 'FTE Req', actual: actRec.erlang_fte, forecast: Math.round(fcRec.erlang_fte * SEASONAL[actM] / (SEASONAL[fcM] || 1)) },
-    ];
-
-    varChecks.forEach(v => {
-      const mape = v.actual > 0 ? Math.abs(v.actual - v.forecast) / v.actual * 100 : 0;
-      const acc = 100 - mape;
-      if (acc < THRESHOLD) {
-        alerts.push({ plan: planName, variable: v.name, accuracy: acc.toFixed(1), qid });
+    // --- TYPE 1: Actuals Deviation (Feb vs Jan) ---
+    if (feb26 && jan26) {
+      const volChg = jan26.vol > 0 ? Math.abs(feb26.vol - jan26.vol) / jan26.vol * 100 : 0;
+      if (volChg > VOL_DEV_THRESHOLD) {
+        const dir = feb26.vol > jan26.vol ? 'increased' : 'decreased';
+        alerts.push({ plan: planName, type: 'actuals', variable: 'Volume',
+          desc: 'Volume ' + dir + ' by ' + volChg.toFixed(0) + '% in Feb vs Jan actuals — sustained deviation may require forecast refresh', qid });
       }
-    });
+      const ahtChg = jan26.aht > 0 ? Math.abs(feb26.aht - jan26.aht) / jan26.aht * 100 : 0;
+      if (ahtChg > AHT_DEV_THRESHOLD) {
+        const dir = feb26.aht > jan26.aht ? 'increased' : 'decreased';
+        alerts.push({ plan: planName, type: 'actuals', variable: 'AHT',
+          desc: 'AHT ' + dir + ' by ' + ahtChg.toFixed(0) + '% in Feb vs Jan — monitor for trend confirmation', qid });
+      }
+    }
+
+    // --- TYPE 2: Driver Forecast Change (current vs plan vintage) ---
+    const vintageKey = key;
+    const curVintage = FORECAST_VINTAGES[vintageKey]?.mar26;
+    const planVintage = FORECAST_VINTAGES[vintageKey]?.aug25;
+    if (curVintage && planVintage && curVintage.length > 0 && planVintage.length > 0) {
+      const curAvgVol = curVintage.reduce((s,r) => s + r.vol, 0) / curVintage.length;
+      const planAvgVol = planVintage.reduce((s,r) => s + r.vol, 0) / planVintage.length;
+      const driverChg = planAvgVol > 0 ? Math.abs(curAvgVol - planAvgVol) / planAvgVol * 100 : 0;
+      if (driverChg > DRIVER_CHG_THRESHOLD) {
+        const dir = curAvgVol > planAvgVol ? 'higher' : 'lower';
+        alerts.push({ plan: planName, type: 'driver', variable: 'Drivers',
+          desc: 'Driver-implied volume is ' + driverChg.toFixed(0) + '% ' + dir + ' than Aug plan — driver forecast may have changed', qid });
+      }
+    }
+
+    // --- TYPE 3: Low T-3 Accuracy ---
+    if (feb26 && nov25) {
+      var varChecks = [
+        { name: 'Volume', actual: feb26.vol, forecast: Math.round(nov25.vol * SEASONAL[2] / (SEASONAL[11] || 1)) },
+        { name: 'AHT', actual: feb26.aht, forecast: nov25.aht },
+        { name: 'Availability', actual: feb26.avail, forecast: nov25.avail },
+        { name: 'Occupancy', actual: feb26.occ, forecast: nov25.occ },
+      ];
+      varChecks.forEach(function(v) {
+        var mape = v.actual > 0 ? Math.abs(v.actual - v.forecast) / v.actual * 100 : 0;
+        var acc = 100 - mape;
+        if (acc < ACC_THRESHOLD) {
+          alerts.push({ plan: planName, type: 'accuracy', variable: v.name,
+            desc: v.name + ' T-3 forecast accuracy is only ' + acc.toFixed(1) + '% — below ' + ACC_THRESHOLD + '% threshold', qid });
+        }
+      });
+    }
   }
 
   const badge = document.getElementById('p3-status-badge');
@@ -2574,19 +2608,27 @@ function renderP3ForecastAlerts(selectedQids) {
   const alertsEl = document.getElementById('p3-fc-alerts');
 
   if (alerts.length > 0) {
+    const accCount = alerts.filter(function(a) { return a.type === 'accuracy'; }).length;
+    const devCount = alerts.filter(function(a) { return a.type === 'actuals'; }).length;
+    const drvCount = alerts.filter(function(a) { return a.type === 'driver'; }).length;
     badge.className = 'dp-status amber';
-    label.textContent = 'Needs review';
-    msg.textContent = `${alerts.length} forecast accuracy alert${alerts.length > 1 ? 's' : ''} detected (T-3 accuracy below ${THRESHOLD}%). Review before locking.`;
-    alertsEl.innerHTML = alerts.map(a =>
-      `<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:var(--amber-lt);border:1px solid #F5D9A8;border-radius:4px;margin-bottom:4px;">
-        <span style="color:var(--amber);font-size:12px;flex-shrink:0;">⚠</span>
-        <span style="font-size:11px;color:var(--text2);line-height:1.5;"><strong style="color:var(--amber);">${a.plan}:</strong> ${a.variable} forecast accuracy is only ${a.accuracy}%</span>
-      </div>`
-    ).join('');
+    label.textContent = 'Forecast Refresh Recommended';
+    msg.textContent = alerts.length + ' alert' + (alerts.length > 1 ? 's' : '') + ' detected (' +
+      [accCount > 0 ? accCount + ' accuracy' : '', devCount > 0 ? devCount + ' actuals deviation' : '', drvCount > 0 ? drvCount + ' driver change' : ''].filter(Boolean).join(', ') +
+      '). Forecast refresh recommended.';
+
+    var iconMap = { accuracy: '📉', actuals: '📊', driver: '🔀' };
+    var labelMap = { accuracy: 'Low accuracy', actuals: 'Actuals deviation', driver: 'Driver change' };
+    alertsEl.innerHTML = alerts.map(function(a) {
+      return '<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:var(--amber-lt);border:1px solid #F5D9A8;border-radius:4px;margin-bottom:4px;">' +
+        '<span style="font-size:12px;flex-shrink:0;">' + iconMap[a.type] + '</span>' +
+        '<span style="font-size:11px;color:var(--text2);line-height:1.5;"><strong style="color:var(--amber);">' + a.plan + '</strong> <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--amber-lt);color:var(--amber);border:1px solid #F5D9A8;margin:0 3px;">' + labelMap[a.type] + '</span> ' + a.desc + '</span>' +
+      '</div>';
+    }).join('');
   } else {
     badge.className = 'dp-status green';
     label.textContent = 'On track';
-    msg.textContent = 'All forecast variables above 90% accuracy threshold. No alerts.';
+    msg.textContent = 'All forecast variables within tolerance. No accuracy, actuals deviation, or driver change alerts.';
     alertsEl.innerHTML = '';
   }
 }
@@ -2695,7 +2737,8 @@ function renderQueueForecast() {
       <td class="mono blue" style="font-weight:700;">${qFTE}</td>
       <td class="mono" style="color:${vc};font-weight:700;">${variance >= 0 ? '+' : ''}${variance}</td>
       <td class="mono" style="color:var(--green);">${q.xc > 0 ? '+'+q.xc : '—'}</td>
-      <td><button style="font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:var(--card);color:var(--blue3);cursor:pointer;font-weight:600;font-family:var(--sans);white-space:nowrap;" onclick="openFDForPlan('${q.qid}')">View Forecast</button></td>`;
+      <td><button style="font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:var(--card);color:var(--blue3);cursor:pointer;font-weight:600;font-family:var(--sans);white-space:nowrap;" onclick="openFDForPlan('${q.qid}')">View Forecast</button></td>
+      <td><button style="font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--blue-lt);background:var(--blue-pale);color:var(--blue);cursor:pointer;font-weight:600;font-family:var(--sans);white-space:nowrap;" onclick="alert('Forecast refresh triggered for ${q.qn}. WatsonX model will retrain with latest actuals.\\n\\nThis feature will be available in production.')">Refresh Forecast</button></td>`;
     tbody.appendChild(tr);
   });
 
@@ -2707,7 +2750,7 @@ function renderQueueForecast() {
   const totVol = qs.reduce((s,q) => s + q.vol, 0);
   const totR = document.createElement('tr');
   totR.style.cssText = 'font-weight:700;background:var(--blue-pale);';
-  totR.innerHTML = `<td style="color:var(--blue);">Total</td><td class="mono">${WFM.fmtN(totHC)}</td><td class="mono">${WFM.fmtVol(totVol)}</td><td></td><td></td><td class="mono blue" style="font-weight:700;">${totFTE}</td><td class="mono" style="color:${totVariance>=0?'var(--green)':'var(--red)'};font-weight:700;">${totVariance>=0?'+':''}${totVariance}</td><td class="mono green">+${totXc}</td><td></td>`;
+  totR.innerHTML = `<td style="color:var(--blue);">Total</td><td class="mono">${WFM.fmtN(totHC)}</td><td class="mono">${WFM.fmtVol(totVol)}</td><td></td><td></td><td class="mono blue" style="font-weight:700;">${totFTE}</td><td class="mono" style="color:${totVariance>=0?'var(--green)':'var(--red)'};font-weight:700;">${totVariance>=0?'+':''}${totVariance}</td><td class="mono green">+${totXc}</td><td></td><td></td>`;
   tbody.appendChild(totR);
 }
 
@@ -3305,6 +3348,49 @@ function onQFChange() {
 }
 
 // ── FD TAB 1 — Dynamic rendering based on queue filter ──
+// ── INITIATIVES REPOSITORY ─────────────────────────────────────
+function openInitRepo() {
+  const body = document.getElementById('init-repo-body');
+  if (!body) return;
+
+  const colorMap = {
+    red: { bg: 'var(--red-lt)', fg: 'var(--red)', border: '#F5C6C2' },
+    amber: { bg: 'var(--amber-lt)', fg: 'var(--amber)', border: '#F5D9A8' },
+    green: { bg: 'var(--green-lt)', fg: 'var(--green)', border: '#B8DECA' }
+  };
+
+  body.innerHTML = STRATEGIC_INITIATIVES.map(init => {
+    const c = colorMap[init.typeColor] || colorMap.amber;
+    const fteColor = init.fteDelta > 0 ? 'var(--red)' : 'var(--green)';
+    const fteSign = init.fteDelta > 0 ? '+' : '';
+    const planNames = init.plans.map(p => 'Plan ' + p).join(', ');
+    const confColor = init.confidence === 'High' ? 'var(--green)' : init.confidence === 'Medium' ? 'var(--amber)' : 'var(--red)';
+
+    return '<div style="border:1px solid ' + c.border + ';border-radius:8px;padding:14px 16px;margin-bottom:12px;background:var(--card);">' +
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">' +
+        '<div style="padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;background:' + c.bg + ';color:' + c.fg + ';white-space:nowrap;">' + init.type + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);">' + init.name + '</div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + init.desc + '</div>' +
+        '</div>' +
+        '<div style="font-size:16px;font-weight:700;color:' + fteColor + ';white-space:nowrap;font-family:var(--mono);">' + fteSign + init.fteDelta + ' FTE</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+        '<div style="font-size:10px;color:var(--text3);"><strong style="color:var(--text2);">Business:</strong> ' + init.biz + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);"><strong style="color:var(--text2);">Function:</strong> ' + init.func + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);"><strong style="color:var(--text2);">Plans:</strong> ' + planNames + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);"><strong style="color:var(--text2);">Confidence:</strong> <span style="color:' + confColor + ';font-weight:600;">' + init.confidence + '</span></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('init-repo-overlay').style.display = '';
+}
+
+function closeInitRepo() {
+  document.getElementById('init-repo-overlay').style.display = 'none';
+}
+
 function renderFDTab3() {
   const listEl = document.getElementById('fd-adj-list');
   if (!listEl) return;
@@ -3879,30 +3965,221 @@ const MODEL_METHODOLOGY = {
 
 let mmInitialized = false;
 
-function initModelMethodology() {
-  const sel = document.getElementById('mm-q-sel');
-  if (!mmInitialized) {
-    sel.innerHTML = '';
-    ALL_QIDS.forEach(qid => {
-      const cs = WFM.crossSkill[qid];
-      const opt = document.createElement('option');
-      opt.value = qid;
-      opt.textContent = cs?.name + (cs?.specialist ? ' (specialist)' : '');
-      sel.appendChild(opt);
+// ── FORECAST CHANGE RATIONALE PER VARIABLE ────────────────────
+function getPlanAlerts(qid) {
+  const SEASONAL = [0, 1.12, 0.95, 1.02, 0.98, 0.94, 0.88, 0.86, 0.90, 0.96, 1.10, 1.08, 1.05];
+  const ACC_THRESHOLD = 90;
+  const VOL_DEV_THRESHOLD = 15;
+  const AHT_DEV_THRESHOLD = 10;
+  const DRIVER_CHG_THRESHOLD = 10;
+
+  const qIdx = ACTIVE_QIDS.indexOf(qid) + 1;
+  const key = hierState.business + '|' + hierState.func + '|' + qIdx;
+  const records = SYNTH_QUEUES[key];
+  if (!records) return { variables: [], types: [] };
+
+  const feb26 = records.find(r => r.yr === 2026 && r.mo === 2);
+  const jan26 = records.find(r => r.yr === 2026 && r.mo === 1);
+  const nov25 = records.find(r => r.yr === 2025 && r.mo === 11);
+
+  const alertVars = new Set();
+  const alertTypes = new Set();
+
+  // Type 1: Actuals deviation
+  if (feb26 && jan26) {
+    const volChg = jan26.vol > 0 ? Math.abs(feb26.vol - jan26.vol) / jan26.vol * 100 : 0;
+    if (volChg > VOL_DEV_THRESHOLD) { alertVars.add('Volume'); alertTypes.add('actuals_vol'); }
+    const ahtChg = jan26.aht > 0 ? Math.abs(feb26.aht - jan26.aht) / jan26.aht * 100 : 0;
+    if (ahtChg > AHT_DEV_THRESHOLD) { alertVars.add('AHT'); alertTypes.add('actuals_aht'); }
+  }
+
+  // Type 2: Driver forecast change
+  const vintageKey = key;
+  const curV = FORECAST_VINTAGES[vintageKey]?.mar26;
+  const planV = FORECAST_VINTAGES[vintageKey]?.aug25;
+  if (curV && planV && curV.length > 0 && planV.length > 0) {
+    const curAvg = curV.reduce(function(s,r){ return s+r.vol; }, 0) / curV.length;
+    const planAvg = planV.reduce(function(s,r){ return s+r.vol; }, 0) / planV.length;
+    const drvChg = planAvg > 0 ? Math.abs(curAvg - planAvg) / planAvg * 100 : 0;
+    if (drvChg > DRIVER_CHG_THRESHOLD) { alertVars.add('Volume'); alertTypes.add('driver'); }
+  }
+
+  // Type 3: Low T-3 accuracy
+  if (feb26 && nov25) {
+    var checks = [
+      { name: 'Volume', actual: feb26.vol, forecast: Math.round(nov25.vol * SEASONAL[2] / (SEASONAL[11] || 1)) },
+      { name: 'AHT', actual: feb26.aht, forecast: nov25.aht },
+      { name: 'Availability', actual: feb26.avail, forecast: nov25.avail },
+      { name: 'Occupancy', actual: feb26.occ, forecast: nov25.occ },
+    ];
+    checks.forEach(function(v) {
+      var mape = v.actual > 0 ? Math.abs(v.actual - v.forecast) / v.actual * 100 : 0;
+      if ((100 - mape) < ACC_THRESHOLD) { alertVars.add(v.name); alertTypes.add('accuracy_' + v.name.toLowerCase()); }
     });
-    mmInitialized = true;
+  }
+
+  return { variables: [...alertVars], types: [...alertTypes] };
+}
+
+// Pre-defined rationale explanations per variable per initiative context
+const RATIONALE_TEMPLATES = {
+  'Volume': {
+    'Deflection': 'Volume forecast decreased for {period} due to "{init}" initiative. Deflection impact confirmed through 2+ months of actuals showing sustained volume reduction. Driver forecast remains stable — volume change is initiative-driven.',
+    'Volume_up': 'Volume forecast increased for {period} due to "{init}" initiative. Driver forecast for {driver} has also increased, compounding the uplift. Recommend monitoring for 1 more month to confirm trend.',
+    'accuracy': 'Volume forecast refreshed because T-3 accuracy dropped below 90%. Recent actuals show volume trending {dir} compared to prior forecast. Driver ({driver}) forecast has {driverChange} — model retrained with latest 3 months of actuals.',
+    'default': 'Volume forecast adjusted based on latest actuals trend. No specific initiative driving the change — organic shift observed over last 2 months.'
+  },
+  'AHT': {
+    'AHT': 'AHT forecast increased from {period} due to "{init}". Handle time has been consistently elevated since the initiative rollout. Wrap time component accounts for most of the increase. Model recalibrated.',
+    'accuracy': 'AHT forecast refreshed because T-3 accuracy fell below threshold. Actuals show AHT trending {dir} — likely driven by changing call mix complexity. Model retrained with updated features.',
+    'default': 'AHT forecast marginally adjusted based on recent trend. No significant driver change identified.'
+  },
+  'Availability': {
+    'accuracy': 'Availability forecast decreased through Dec 2026 because it has been trending down for last 3 months. Seasonal workforce patterns and increased unplanned leave driving the reduction. HR confirmed no policy changes.',
+    'default': 'Availability forecast remains stable. Minor seasonal adjustments applied — no structural change.'
+  },
+  'Occupancy': {
+    'accuracy': 'Occupancy forecast adjusted based on observed trend. Higher-than-expected occupancy in recent months suggests tighter staffing. Monitoring for agent burnout risk.',
+    'default': 'Occupancy forecast unchanged — tracking within normal range.'
+  }
+};
+
+function buildForecastRationale(qid) {
+  const alertInfo = getPlanAlerts(qid);
+  const alertVars = alertInfo.variables;
+  const alertTypes = alertInfo.types;
+  const inits = getInitiativesForPlan(qid);
+  const driverInfo = getCurrentDriver();
+  const hasAlerts = alertVars.length > 0;
+
+  const variables = ['Volume', 'AHT', 'Availability', 'Occupancy'];
+
+  const cards = variables.map(function(varName) {
+    var rationale = '';
+    var borderColor = 'var(--green)';
+    var icon = '✅';
+
+    if (!hasAlerts) {
+      rationale = 'Forecast not changed because no major deviations were observed and accuracy remains good.';
+      return buildRationaleCard(varName, icon, borderColor, rationale);
+    }
+
+    var varHasAlert = alertVars.includes(varName);
+    var relevantInits = inits.filter(function(i) {
+      if (varName === 'Volume') return i.type === 'Volume' || i.type === 'Deflection';
+      if (varName === 'AHT') return i.type === 'AHT';
+      return false;
+    });
+
+    // Check which specific trigger types apply to this variable
+    var hasActualsDev = (varName === 'Volume' && alertTypes.includes('actuals_vol')) || (varName === 'AHT' && alertTypes.includes('actuals_aht'));
+    var hasDriverChg = varName === 'Volume' && alertTypes.includes('driver');
+    var hasLowAcc = alertTypes.includes('accuracy_' + varName.toLowerCase());
+
+    if (!varHasAlert && relevantInits.length === 0) {
+      rationale = 'Forecast not changed for this variable — no deviations observed, accuracy within range, and no initiative impact.';
+      return buildRationaleCard(varName, '✅', 'var(--green)', rationale);
+    }
+
+    var parts = [];
+
+    // Initiative-driven
+    if (relevantInits.length > 0) {
+      var init = relevantInits[0];
+      if (init.type === 'Deflection') {
+        parts.push('🔄 <strong>Initiative impact:</strong> Forecast adjusted due to "' + init.name + '". Deflection impact confirmed through 2+ months of actuals showing sustained reduction.');
+      } else if (init.type === 'Volume') {
+        parts.push('🔄 <strong>Initiative impact:</strong> Forecast increased due to "' + init.name + '". Volume uplift observed in recent actuals, aligning with initiative projections.');
+      } else if (init.type === 'AHT') {
+        parts.push('🔄 <strong>Initiative impact:</strong> Forecast adjusted due to "' + init.name + '". Handle time consistently elevated since initiative rollout — wrap time component accounts for most of the increase.');
+      }
+      icon = '🔄'; borderColor = 'var(--amber)';
+    }
+
+    // Actuals deviation
+    if (hasActualsDev) {
+      if (varName === 'Volume') {
+        parts.push('📊 <strong>Actuals deviation:</strong> Feb 2026 volume deviated significantly from Jan 2026. If this trend persists for 1–2 more months, a model retrain is recommended. Currently monitoring.');
+      } else if (varName === 'AHT') {
+        parts.push('📊 <strong>Actuals deviation:</strong> Feb 2026 AHT showed a sharp shift from Jan. Could be a seasonal effect or process change — monitoring next month before adjusting forecast.');
+      }
+      icon = '⚠️'; borderColor = 'var(--amber)';
+    }
+
+    // Driver forecast change
+    if (hasDriverChg) {
+      parts.push('🔀 <strong>Driver forecast change:</strong> ' + driverInfo.name + ' forecast has shifted significantly from the Aug 2025 plan. Since volume = drivers × contact rate, this implies a volume forecast adjustment is needed.');
+      icon = '🔀'; borderColor = 'var(--amber)';
+    }
+
+    // Low T-3 accuracy
+    if (hasLowAcc) {
+      if (varName === 'Volume') {
+        parts.push('📉 <strong>Low T-3 accuracy:</strong> Volume forecast accuracy fell below 90%. Model retrained with latest 3 months of actuals. ' + driverInfo.name + ' trend incorporated into updated forecast.');
+      } else if (varName === 'AHT') {
+        parts.push('📉 <strong>Low T-3 accuracy:</strong> AHT forecast accuracy below threshold. Likely driven by changing call mix complexity. Model recalibrated with recent data.');
+      } else if (varName === 'Availability') {
+        parts.push('📉 <strong>Low T-3 accuracy:</strong> Availability trending below forecast for 3 consecutive months. Adjusted downward through Dec 2026 to reflect persistent pattern. HR confirmed no policy changes.');
+      } else if (varName === 'Occupancy') {
+        parts.push('📉 <strong>Low T-3 accuracy:</strong> Occupancy tracking higher than forecasted. Tighter staffing in recent months driving the deviation. Adjusted upward — monitoring for agent burnout risk.');
+      }
+      icon = '📉'; borderColor = 'var(--amber)';
+    }
+
+    if (parts.length === 0) {
+      rationale = 'Forecast not changed for this variable — no specific trigger detected.';
+      return buildRationaleCard(varName, '✅', 'var(--green)', rationale);
+    }
+
+    rationale = parts.join('<br><br>');
+    return buildRationaleCard(varName, icon, borderColor, rationale);
+  }).join('');
+
+  return '<div class="mm-card full" style="border-top-color:' + (hasAlerts ? 'var(--amber)' : 'var(--green)') + ';">' +
+    '<div class="mm-card-title">Forecast change rationale — this cycle</div>' +
+    '<div class="mm-card-sub">WHY THE FORECAST CHANGED (OR DIDN\'T)</div>' +
+    '<div style="margin-top:8px;">' + cards + '</div>' +
+  '</div>';
+}
+
+function buildRationaleCard(varName, icon, borderColor, rationale) {
+  return '<div style="padding:10px 12px;background:var(--bg);border-radius:4px;border-left:3px solid ' + borderColor + ';margin-bottom:8px;">' +
+    '<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">' + icon + ' ' + varName + '</div>' +
+    '<div style="font-size:11px;color:var(--text2);line-height:1.6;">' + rationale + '</div>' +
+  '</div>';
+}
+
+function initModelMethodology() {
+  // Set the hidden dropdown to the current plan and update label
+  const sel = document.getElementById('mm-q-sel');
+  const label = document.getElementById('mm-plan-label');
+  if (fdCurrentPlanQid) {
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = fdCurrentPlanQid;
+    sel.appendChild(opt);
+    sel.value = fdCurrentPlanQid;
+    const meta = ACTIVE_QUEUE_META[fdCurrentPlanQid];
+    if (label) label.textContent = meta?.name || fdCurrentPlanQid;
   }
   renderModelMethodology();
 }
 
 function renderModelMethodology() {
   const qid = document.getElementById('mm-q-sel').value;
-  const mm = MODEL_METHODOLOGY[qid];
-  const cs = WFM.crossSkill[qid];
-  if (!mm || !cs) return;
+  
+  // Map the new-style qid to an old MODEL_METHODOLOGY key using plan index
+  const qIdx = ACTIVE_QIDS.indexOf(qid);
+  const oldQids = ['csrb','csrb_esc','csaa','cscostco','csbc','csthd','csbby','cssears','csspa','cscan'];
+  const mappedQid = oldQids[qIdx % oldQids.length] || oldQids[0];
+  
+  const mm = MODEL_METHODOLOGY[mappedQid];
+  const meta = ACTIVE_QUEUE_META[qid];
+  if (!mm) return;
 
+  const planName = meta?.name || qid;
   document.getElementById('mm-q-sub').textContent =
-    `HC: ${cs.hc} · ${cs.vol_pct}% of volume · ${cs.specialist ? 'Specialist (locked)' : 'Cross-skill eligible'}`;
+    `${hierState.business} · ${hierState.func} · ${hierState.qtype}`;
 
   const accColor = (v) => v >= 92 ? 'var(--green)' : v >= 90 ? 'var(--amber)' : 'var(--red)';
   const biasColor = (v) => Math.abs(v) <= 1.5 ? 'var(--green)' : Math.abs(v) <= 3 ? 'var(--amber)' : 'var(--red)';
@@ -3925,7 +4202,7 @@ function renderModelMethodology() {
     <!-- Model overview -->
     <div class="mm-card accent-blue">
       <div class="mm-card-title">Volume forecast model</div>
-      <div class="mm-card-sub">PRIMARY MODEL · ${cs.name}</div>
+      <div class="mm-card-sub">PRIMARY MODEL · ${planName}</div>
       <div class="mm-field"><div class="mm-label">Model type</div><div class="mm-value">${mm.model_type}</div></div>
       <div class="mm-field"><div class="mm-label">Engine</div><div class="mm-value">${mm.engine}</div></div>
       <div class="mm-field"><div class="mm-label">Target variable</div><div class="mm-value">${mm.target_variable}</div></div>
@@ -3996,12 +4273,15 @@ function renderModelMethodology() {
       <div style="font-size:12px;color:var(--text2);line-height:1.7;padding:8px 12px;background:var(--bg);border-radius:4px;border-left:3px solid ${mm.notes.includes('flag') || mm.notes.includes('below') ? 'var(--amber)' : 'var(--green)'};">${mm.notes}</div>
     </div>
 
+    <!-- Forecast Change Rationale -->
+    ${buildForecastRationale(qid)}
+
     <!-- Cross-link to Health & Approval -->
     <div class="mm-card full accent-blue" style="border-top-width:2px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div class="mm-card-title">Review health &amp; approve this plan</div>
-          <div style="font-size:11px;color:var(--text3);">Check model accuracy metrics and approve the ${cs.name} forecast for this cycle</div>
+          <div style="font-size:11px;color:var(--text3);">Check model accuracy metrics and approve the ${planName} forecast for this cycle</div>
         </div>
         <button class="lt-btn primary" style="font-size:11px;white-space:nowrap;" onclick="viewHealthForQueue('${qid}')">→ Go to Health &amp; Approval</button>
       </div>
@@ -4265,5 +4545,19 @@ function updateSuggestions() {
 
 
 </script>
+<!-- INITIATIVES REPOSITORY OVERLAY -->
+<div id="init-repo-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,20,50,.5);backdrop-filter:blur(2px);">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(900px,92vw);max-height:85vh;background:var(--card);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--blue-dark);color:#fff;">
+      <div>
+        <div style="font-size:15px;font-weight:700;">Initiatives Repository</div>
+        <div style="font-size:11px;opacity:.7;margin-top:2px;">All strategic initiatives across functions · FY2026 planning cycle</div>
+      </div>
+      <button onclick="closeInitRepo()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px;opacity:.8;">✕</button>
+    </div>
+    <div style="padding:16px 20px;overflow-y:auto;flex:1;" id="init-repo-body"></div>
+  </div>
+</div>
+
 </body>
 </html>
