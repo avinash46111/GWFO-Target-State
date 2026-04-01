@@ -1,0 +1,13 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+body {
+  font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #0a1628; color: #e8edf5;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111d32; }
+::-webkit-scrollbar-thumb { background: #253a58; border-radius: 3px; }
+::selection { background: rgba(10, 143, 230, 0.3); }
+input:focus, select:focus { outline: none; border-color: #0a8fe6 !important; }
+tr { transition: background-color 0.1s ease; }
