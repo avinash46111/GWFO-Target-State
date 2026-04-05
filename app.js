@@ -576,54 +576,658 @@ function renderPanel1() {
 }
 
 // ── PANEL 2 — HC RECONCILIATION ───────────────────────────────────
+let p2EditMode = false;
+let p2UserOverrides = { hcPayroll: '', newHires: '', attrition: '', transferIn: '', transferOut: '' };
+
+// KPI data: PAW systemic load vs NICE actuals
+const P2_KPI = {
+  cols: ['HC on Payroll', 'New Hires', 'Attrition', 'Transfer In', 'Transfer Out'],
+  keys: ['hcPayroll', 'newHires', 'attrition', 'transferIn', 'transferOut'],
+  paw:  [2004, 72, 20, 3, 10],
+  nice: [2000, 68, 24, 2,  8],
+};
+
+// Planned/forecasted values for Feb 2026 (built into the forecast)
+const P2_PLANNED = { beginningHC: 1962, newHires: 50, attrition: 20, transferIn: 2, transferOut: 8 };
+
+// Shared SVG waterfall chart builder
+function buildWaterfallSVG(bars) {
+  const W = 460, H = 285, padL = 56, padR = 14, padT = 22, padB = 58;
+  const cW = W - padL - padR, cH = H - padT - padB;
+
+  let running = 0;
+  bars.forEach(b => {
+    if (b.type === 'ref') {
+      b.base = 0; b.top = b.abs; running = b.abs;
+    } else {
+      b.base = b.delta > 0 ? running : running + b.delta;
+      b.top  = b.delta > 0 ? running + b.delta : running;
+      running += b.delta;
+    }
+    b.runAfter = running;
+  });
+
+  const allVals = bars.flatMap(b => [b.base, b.top]);
+  const yMin = Math.min(...allVals) - 15;
+  const yMax = Math.max(...allVals) + 15;
+  const yRange = yMax - yMin;
+
+  const toY = v => padT + cH - (v - yMin) / yRange * cH;
+  const toH = (a, b) => Math.abs(toY(a) - toY(b));
+
+  const n = bars.length;
+  const barW = cW / n * 0.52;
+  const slot  = cW / n;
+
+  const tickStep = Math.ceil(yRange / 6 / 5) * 5;
+  const ticks = [];
+  for (let v = Math.ceil(yMin / tickStep) * tickStep; v <= yMax; v += tickStep) ticks.push(v);
+
+  const COL = { ref: '#1A5EA8', pos: '#0A7C4E', neg: '#D9261C' };
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;font-family:var(--sans);">`;
+
+  ticks.forEach(v => {
+    const y = toY(v);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#E0EAF3" stroke-width="1"/>`;
+    svg += `<text x="${padL - 5}" y="${y + 4}" text-anchor="end" font-size="9" fill="#8898AA" font-family="monospace">${v.toLocaleString()}</text>`;
+  });
+
+  bars.forEach((b, i) => {
+    if (i < n - 1) {
+      const x1 = padL + i * slot + (slot - barW) / 2 + barW;
+      const x2 = padL + (i + 1) * slot + (slot - barW) / 2;
+      svg += `<line x1="${x1}" y1="${toY(b.runAfter)}" x2="${x2}" y2="${toY(b.runAfter)}" stroke="#C8D8E8" stroke-width="1" stroke-dasharray="3,2"/>`;
+    }
+  });
+
+  bars.forEach((b, i) => {
+    const x   = padL + i * slot + (slot - barW) / 2;
+    const y   = toY(b.top);
+    const h   = Math.max(toH(b.base, b.top), 5);
+    const col = COL[b.type];
+    const val = b.type === 'ref' ? b.abs.toLocaleString() : (b.delta >= 0 ? '+' + b.delta : String(b.delta));
+
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3" fill="${col}" opacity="${b.type === 'ref' ? '0.88' : '0.72'}"/>`;
+
+    const lblY = b.type === 'neg' ? toY(b.base) + 13 : y - 5;
+    svg += `<text x="${x + barW / 2}" y="${lblY}" text-anchor="middle" font-size="10" font-weight="700" fill="${col}" font-family="monospace">${val}</text>`;
+
+    b.label.split('\n').forEach((line, li) => {
+      svg += `<text x="${x + barW / 2}" y="${padT + cH + 16 + li * 13}" text-anchor="middle" font-size="10" fill="#4A5568">${line}</text>`;
+    });
+  });
+
+  return svg + '</svg>';
+}
+
+function p2Mismatch(i) { return P2_KPI.nice[i] - P2_KPI.paw[i]; }
+
+function p2FmtMismatch(v) {
+  if (v === 0) return '<span style="color:var(--text3);">—</span>';
+  const cls = 'font-family:var(--mono);font-weight:700;color:var(--red);';
+  return `<span style="${cls}">${v > 0 ? '+' : ''}${v}</span>`;
+}
+
+function p2RenderKpiTable() {
+  const el = document.getElementById('p2-kpi-table');
+  if (!el) return;
+
+  const colW = 'min-width:110px;text-align:right;padding:9px 14px;';
+  const rowLbl = 'font-size:11px;font-weight:700;padding:9px 12px;white-space:nowrap;';
+
+  let html = `<table class="dp-table" style="width:100%;">
+    <thead><tr>
+      <th style="text-align:left;min-width:160px;">Source / Metric</th>
+      ${P2_KPI.cols.map(c => `<th style="text-align:right;min-width:110px;">${c}</th>`).join('')}
+    </tr></thead>
+    <tbody>`;
+
+  // Row 1: PAW systemic load
+  html += `<tr>
+    <td style="${rowLbl}color:var(--blue3);">PAW — Systemic Load</td>
+    ${P2_KPI.paw.map(v => `<td style="${colW}" class="mono">${v.toLocaleString()}</td>`).join('')}
+  </tr>`;
+
+  // Row 2: NICE values
+  html += `<tr>
+    <td style="${rowLbl}color:var(--text2);">NICE — Actual Values</td>
+    ${P2_KPI.nice.map(v => `<td style="${colW}" class="mono">${v.toLocaleString()}</td>`).join('')}
+  </tr>`;
+
+  // Row 3: Mismatch (red highlight where non-zero)
+  const mismatches = P2_KPI.cols.map((_, i) => p2Mismatch(i));
+  const hasMismatch = mismatches.some(v => v !== 0);
+  html += `<tr style="background:${hasMismatch ? '#FDF1F0' : 'var(--green-lt)'} ;">
+    <td style="${rowLbl}color:var(--red);">Mismatch</td>
+    ${mismatches.map(v => `<td style="${colW};">${p2FmtMismatch(v)}</td>`).join('')}
+  </tr>`;
+
+  // Row 4: Final data (matches NICE)
+  html += `<tr style="background:var(--blue-pale);font-weight:700;">
+    <td style="${rowLbl}color:var(--blue);font-weight:800;">Final (after reconciliation)</td>
+    ${P2_KPI.nice.map(v => `<td style="${colW};font-family:var(--mono);font-weight:700;color:var(--blue3);">${v.toLocaleString()}</td>`).join('')}
+  </tr>`;
+
+  // Row 5: User overwrite (only shown in edit mode or when overrides exist)
+  const hasOverrides = Object.values(p2UserOverrides).some(v => v !== '');
+  if (p2EditMode || hasOverrides) {
+    if (p2EditMode) {
+      html += `<tr style="background:var(--amber-lt);">
+        <td style="${rowLbl}color:var(--amber);font-weight:800;">Overwritten (user input)</td>
+        ${P2_KPI.keys.map((k, i) => `
+          <td style="${colW}">
+            <input class="dp-editable" type="number" id="p2-ov-${k}"
+              value="${p2UserOverrides[k] !== '' ? p2UserOverrides[k] : P2_KPI.nice[i]}"
+              oninput="p2SaveOverride('${k}', this.value)"
+              style="width:80px;text-align:right;" />
+          </td>`).join('')}
+      </tr>`;
+    } else if (hasOverrides) {
+      html += `<tr style="background:var(--amber-lt);">
+        <td style="${rowLbl}color:var(--amber);font-weight:800;">Overwritten (user input)</td>
+        ${P2_KPI.keys.map((k, i) => {
+          const v = p2UserOverrides[k] !== '' ? Number(p2UserOverrides[k]).toLocaleString() : P2_KPI.nice[i].toLocaleString();
+          return `<td style="${colW};font-family:var(--mono);font-weight:700;color:var(--amber);">${v}</td>`;
+        }).join('')}
+      </tr>`;
+    }
+  }
+
+  html += `</tbody></table>`;
+  el.innerHTML = html;
+}
+
+// Returns the final value for a KPI key: user override if set, else NICE actual
+function p2GetFinal(key) {
+  const idx = P2_KPI.keys.indexOf(key);
+  const ov = p2UserOverrides[key];
+  return ov !== '' ? Number(ov) : P2_KPI.nice[idx];
+}
+
+function p2SaveOverride(key, val) {
+  p2UserOverrides[key] = val;
+  p2RenderHCWalk();
+  p2RenderWaterfall();
+  p2RenderTrend();
+  p2RenderMoMTable();
+}
+
+function p2ToggleEdit() {
+  p2EditMode = !p2EditMode;
+  const btn = document.getElementById('p2-edit-btn');
+  if (btn) btn.textContent = p2EditMode ? '✓ Done editing' : '✎ Edit / Overwrite';
+  if (p2EditMode) p2ResetConfirm();
+  p2RenderKpiTable();
+  p2RenderHCWalk();
+  p2RenderWaterfall();
+  p2RenderTrend();
+  p2RenderMoMTable();
+}
+
+// Chart 1: Actual HC walk — opening balance → actual movements → closing balance
+// Driven by reconciled/overridden values from the KPI table
+function p2RenderHCWalk() {
+  const el = document.getElementById('p2-hc-walk');
+  if (!el) return;
+
+  const newHires    = p2GetFinal('newHires');
+  const attrition   = p2GetFinal('attrition');
+  const transferIn  = p2GetFinal('transferIn');
+  const transferOut = p2GetFinal('transferOut');
+  const closingHC   = p2GetFinal('hcPayroll');
+  // Opening HC is derived from the closing balance minus actual movements
+  const openingHC   = closingHC - newHires + attrition - transferIn + transferOut;
+
+  const hasOverrides = Object.values(p2UserOverrides).some(v => v !== '');
+  const sub = document.getElementById('p2-walk-sub');
+  if (sub) {
+    sub.textContent = hasOverrides ? 'User-overridden values active' : 'Actual movements · reflects reconciled values';
+    sub.style.color = hasOverrides ? 'var(--amber)' : '';
+  }
+
+  el.innerHTML = buildWaterfallSVG([
+    { label: 'Opening\nHC',    abs: openingHC,    type: 'ref' },
+    { label: 'New\nHires',     delta: +newHires,   type: 'pos' },
+    { label: 'Attrition',      delta: -attrition,  type: 'neg' },
+    { label: 'Transfer\nIn',   delta: +transferIn, type: 'pos' },
+    { label: 'Transfer\nOut',  delta: -transferOut, type: 'neg' },
+    { label: 'Closing\nHC',    abs: closingHC,     type: 'ref' },
+  ]);
+}
+
+// Chart 2: Forecast vs actual bridge — planned closing HC → plan deviations → actual closing HC
+// Shows where the month ended up differently from what was planned/forecasted
+function p2RenderWaterfall() {
+  const el = document.getElementById('p2-waterfall');
+  if (!el) return;
+
+  // Forecasted closing HC (built from planned movements)
+  const forecastedClosing = P2_PLANNED.beginningHC
+    + P2_PLANNED.newHires
+    - P2_PLANNED.attrition
+    + P2_PLANNED.transferIn
+    - P2_PLANNED.transferOut; // 1962 + 50 - 20 + 2 - 8 = 1,986
+
+  // Actual (reconciled/overridden) values
+  const actualClosing   = p2GetFinal('hcPayroll');
+  const hiresDev        = p2GetFinal('newHires')    - P2_PLANNED.newHires;    // +ve = more hires than planned
+  const attrDev         = -(p2GetFinal('attrition') - P2_PLANNED.attrition);  // +ve = less attrition than planned
+  const tInDev          = p2GetFinal('transferIn')  - P2_PLANNED.transferIn;
+  const tOutDev         = -(p2GetFinal('transferOut') - P2_PLANNED.transferOut);
+
+  const deviations = [
+    { label: 'Unplanned\nHires',      delta: hiresDev  },
+    { label: 'Attrition\nDeviation',  delta: attrDev   },
+    { label: 'Transfer In\nDeviation',delta: tInDev    },
+    { label: 'Transfer Out\nDeviation',delta: tOutDev  },
+  ].filter(d => d.delta !== 0); // only show non-zero deviations
+
+  const bars = [
+    { label: 'Forecast\nClosing HC', abs: forecastedClosing, type: 'ref' },
+    ...deviations.map(d => ({ label: d.label, delta: d.delta, type: d.delta >= 0 ? 'pos' : 'neg' })),
+    { label: 'Actual\nClosing HC',   abs: actualClosing,     type: 'ref' },
+  ];
+
+  el.innerHTML = buildWaterfallSVG(bars);
+}
+
+// ── PANEL 2 — TREND CHART ─────────────────────────────────────────
+const P2_TREND = {
+  months: ['Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26','May 26','Jun 26','Jul 26','Aug 26','Sep 26','Oct 26','Nov 26','Dec 26','Jan 27','Feb 27'],
+  // Indices 0-5 are actuals, 6-17 are forecast
+  actualCount: 6,
+  data: {
+    hcPayroll: {
+      label: 'HC on Payroll',
+      actual:   [1876, 1898, 1912, 1940, 1962, 2000, null, null, null, null, null, null, null, null, null, null, null, null],
+      forecast: [1880, 1895, 1910, 1932, 1970, 1986, 2015, 2028, 2040, 2052, 2065, 2078, 2090, 2100, 2112, 2120, 2132, 2145],
+      comments: {
+        3: 'Seasonal hiring intake for Q4 operations — 15 additional agents onboarded ahead of holiday volumes',
+        4: 'Mumbai site added for USPB Fraud operations — +45 HC planned intake beginning Jan 2026. Drove elevated hiring above forecast.',
+        5: 'HC reconciliation complete · Feb 2026 actuals confirmed at 2,000 via NICE',
+        6: 'Forecasted ramp-up for Q1 2026 — planned intake of 24 new hires across 3 specialist plans',
+        11: 'Planned headcount plateau — hiring to slow as capacity targets are met by Aug 2026',
+      }
+    },
+    newHires: {
+      label: 'New Hires',
+      actual:   [45, 38, 32, 55, 80, 68, null, null, null, null, null, null, null, null, null, null, null, null],
+      forecast: [42, 36, 30, 50, 70, 50, 24, 20, 18, 22, 20, 18, 15, 18, 20, 22, 20, 18],
+      comments: {
+        3: 'Q4 seasonal intake — 55 hires vs 50 planned due to early Q1 2026 demand signal',
+        4: 'Mumbai site launch drove elevated hiring — 80 actual vs 70 planned. 10% above forecast.',
+        5: 'Feb 2026 actuals: 68 new hires confirmed via NICE vs 50 planned. Onboarding pipeline carried over from Jan.',
+        6: 'Planned cooldown post-Mumbai ramp — 24 hires targeted for Mar 2026',
+        9: 'Jun 2026 hiring uptick planned ahead of Q3 volume peak',
+      }
+    },
+    attrition: {
+      label: 'Attrition',
+      actual:   [18, 20, 22, 16, 28, 24, null, null, null, null, null, null, null, null, null, null, null, null],
+      forecast: [20, 20, 20, 18, 22, 20, 22, 20, 18, 28, 20, 18, 20, 18, 18, 16, 20, 20],
+      comments: {
+        2: 'Nov 25 attrition slightly elevated — contract expirations across CRS cluster',
+        4: 'Jan 2026 attrition spike — 28 vs 22 planned. Driven by voluntary exits following annual appraisal cycle.',
+        9: 'Forecasted attrition peak in Jun 2026 — annual performance review cycle typically drives voluntary exits',
+      }
+    },
+    transferIn: {
+      label: 'Transfer In',
+      actual:   [3, 2, 4, 5, 3, 2, null, null, null, null, null, null, null, null, null, null, null, null],
+      forecast: [3, 2, 4, 4, 3, 2, 5, 4, 3, 2, 3, 4, 3, 2, 3, 4, 3, 2],
+      comments: {
+        3: 'Q4 cross-LOB transfers — 5 agents moved in from Wealth Management for seasonal support',
+        6: 'Planned increase in transfers in — agents from ICRM being cross-skilled into USPB Fraud plans',
+      }
+    },
+    transferOut: {
+      label: 'Transfer Out',
+      actual:   [5, 6, 4, 3, 10, 8, null, null, null, null, null, null, null, null, null, null, null, null],
+      forecast: [5, 5, 4, 4, 8, 8, 6, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5],
+      comments: {
+        4: 'Jan 2026 — 10 agents transferred out to support new ICRM initiative launch. 25% above forecast.',
+        5: 'Feb 2026 — 8 agents transferred out, in line with adjusted forecast',
+      }
+    },
+  }
+};
+
+let p2TrendKPI = 'hcPayroll';
+
+function p2RenderTrendBtns() {
+  const el = document.getElementById('p2-trend-btns');
+  if (!el) return;
+  const kpis = [
+    ['hcPayroll',   'HC on Payroll'],
+    ['newHires',    'New Hires'],
+    ['attrition',   'Attrition'],
+    ['transferIn',  'Transfer In'],
+    ['transferOut', 'Transfer Out'],
+  ];
+  el.innerHTML = kpis.map(([k, lbl]) => {
+    const active = k === p2TrendKPI;
+    return `<button id="p2-trend-btn-${k}" onclick="p2SelectTrend('${k}')"
+      style="padding:5px 12px;font-size:10px;font-weight:700;border-radius:4px;cursor:pointer;border:1px solid var(--border);font-family:var(--sans);transition:all .15s;
+      background:${active ? 'var(--blue)' : 'var(--card)'};color:${active ? '#fff' : 'var(--text2)'};">${lbl}</button>`;
+  }).join('');
+}
+
+function p2SelectTrend(kpi) {
+  p2TrendKPI = kpi;
+  p2RenderTrendBtns();
+  p2RenderTrend();
+}
+
+function p2ShowTip(evt, kpiKey, idx, isActual) {
+  const tip = document.getElementById('p2-trend-tip');
+  if (!tip) return;
+  const kpiBase = P2_TREND.data[kpiKey];
+  const FEB26   = P2_TREND.actualCount - 1;
+  // Use live reconciled value for the Feb 26 actual point
+  let val = isActual ? kpiBase.actual[idx] : kpiBase.forecast[idx];
+  if (isActual && idx === FEB26 && P2_KPI.keys.includes(kpiKey)) val = p2GetFinal(kpiKey);
+  const kpi = kpiBase;
+  const comment = kpi.comments?.[idx];
+  const month = P2_TREND.months[idx];
+  const type  = isActual ? 'Actual' : 'Forecast';
+  const valColor = isActual ? '#003B70' : '#6D28D9';
+
+  let html = `<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${month}</div>`;
+  html += `<div style="display:flex;gap:10px;align-items:baseline;">
+    <span style="font-family:monospace;font-size:16px;font-weight:700;color:${valColor};">${val?.toLocaleString()}</span>
+    <span style="font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;background:${isActual ? '#E8F5EE' : '#EDE9FE'};color:${isActual ? '#0A7C4E' : '#5B21B6'};">${type}</span>
+  </div>`;
+  if (comment) {
+    html += `<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border-lt);font-size:10px;color:var(--text2);line-height:1.55;">
+      <span style="color:var(--amber);font-weight:700;margin-right:4px;">&#9679;</span>${comment}
+    </div>`;
+  }
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+
+  const wrap = document.getElementById('p2-trend-wrap');
+  const r = wrap.getBoundingClientRect();
+  let left = evt.clientX - r.left + 14;
+  let top  = evt.clientY - r.top  - 14;
+  if (left + 250 > r.width) left = evt.clientX - r.left - 264;
+  if (top < 0) top = 4;
+  tip.style.left = left + 'px';
+  tip.style.top  = top  + 'px';
+}
+
+function p2HideTip() {
+  const tip = document.getElementById('p2-trend-tip');
+  if (tip) tip.style.display = 'none';
+}
+
+function p2RenderTrend() {
+  const el = document.getElementById('p2-trend-chart');
+  if (!el) return;
+
+  const kpiBase = P2_TREND.data[p2TrendKPI];
+  const months  = P2_TREND.months;
+  const n       = months.length;
+  const actN    = P2_TREND.actualCount;
+  const FEB26   = actN - 1; // index 5
+
+  // Clone arrays so we can override Feb 26 with the live reconciled value
+  const actualArr   = [...kpiBase.actual];
+  const forecastArr = [...kpiBase.forecast];
+  // The trend KPI keys match P2_KPI keys — override Feb 26 actual point
+  if (P2_KPI.keys.includes(p2TrendKPI)) {
+    actualArr[FEB26] = p2GetFinal(p2TrendKPI);
+  }
+
+  // Wrap so the rest of the function uses the overridden arrays
+  const kpi = { ...kpiBase, actual: actualArr, forecast: forecastArr };
+
+  // Collect all values for Y scale
+  const allVals = [
+    ...kpi.actual.filter(v => v !== null),
+    ...kpi.forecast,
+  ];
+  const yPad  = (Math.max(...allVals) - Math.min(...allVals)) * 0.12;
+  const yMin  = Math.min(...allVals) - yPad;
+  const yMax  = Math.max(...allVals) + yPad;
+  const yRange = yMax - yMin;
+
+  const W = 760, H = 280, padL = 56, padR = 20, padT = 28, padB = 48;
+  const cW = W - padL - padR, cH = H - padT - padB;
+
+  const toX = i  => padL + (i / (n - 1)) * cW;
+  const toY = v  => padT + cH - (v - yMin) / yRange * cH;
+
+  // Y-axis ticks
+  const tickStep = Math.ceil(yRange / 6 / 5) * 5 || 1;
+  const ticks = [];
+  for (let v = Math.ceil(yMin / tickStep) * tickStep; v <= yMax; v += tickStep) ticks.push(v);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;font-family:var(--sans);" onmouseleave="p2HideTip()">`;
+
+  // Forecast shaded region background
+  const fX = toX(actN - 1);
+  svg += `<rect x="${fX}" y="${padT}" width="${W - padR - fX}" height="${cH}" fill="#F0F5FA" opacity=".6"/>`;
+
+  // Gridlines + Y labels
+  ticks.forEach(v => {
+    const y = toY(v);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#E0EAF3" stroke-width="1"/>`;
+    svg += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="9" fill="#8898AA" font-family="monospace">${v.toLocaleString()}</text>`;
+  });
+
+  // Actual/Forecast boundary line
+  svg += `<line x1="${fX}" y1="${padT}" x2="${fX}" y2="${padT + cH}" stroke="#C8D8E8" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  svg += `<text x="${fX - 6}" y="${padT + 10}" text-anchor="end" font-size="8" font-weight="700" fill="#8898AA" letter-spacing=".5">ACTUAL</text>`;
+  svg += `<text x="${fX + 6}" y="${padT + 10}" text-anchor="start" font-size="8" font-weight="700" fill="#6D28D9" letter-spacing=".5" opacity=".7">FORECAST</text>`;
+
+  // X-axis month labels (every other to avoid crowding)
+  months.forEach((m, i) => {
+    if (i % 2 === 0 || i === n - 1) {
+      svg += `<text x="${toX(i)}" y="${padT + cH + 16}" text-anchor="middle" font-size="9" fill="${i < actN ? '#4A5568' : '#6D28D9'}" opacity="${i < actN ? '1' : '.7'}">${m}</text>`;
+    }
+  });
+
+  // ── Forecast line (dashed, purple-ish) ──
+  const fcPts = months.map((_, i) => `${toX(i)},${toY(kpi.forecast[i])}`).join(' ');
+  svg += `<polyline points="${fcPts}" fill="none" stroke="#7C3AED" stroke-width="1.5" stroke-dasharray="5,3" opacity=".55"/>`;
+
+  // ── Actual line (solid, blue) ──
+  const actPts = months.slice(0, actN).map((_, i) => `${toX(i)},${toY(kpi.actual[i])}`).join(' ');
+  svg += `<polyline points="${actPts}" fill="none" stroke="#003B70" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // ── Data points ──
+  const isOverridden = P2_KPI.keys.includes(p2TrendKPI) && p2UserOverrides[p2TrendKPI] !== '';
+  months.forEach((_, i) => {
+    const isActual   = i < actN;
+    const isOvPoint  = isActual && i === FEB26 && isOverridden;
+    const val = isActual ? kpi.actual[i] : kpi.forecast[i];
+    if (val === null) return;
+    const x = toX(i), y = toY(val);
+    const hasComment = kpi.comments?.[i] != null;
+    const col = isOvPoint ? '#B45309' : (isActual ? '#003B70' : '#7C3AED');
+
+    // Override pulse ring
+    if (isOvPoint) {
+      svg += `<circle cx="${x}" cy="${y}" r="11" fill="#B45309" opacity=".15"/>`;
+    } else if (hasComment) {
+      svg += `<circle cx="${x}" cy="${y}" r="${isActual ? 9 : 8}" fill="${col}" opacity=".12"/>`;
+    }
+    // Dot
+    const r = isOvPoint ? 6 : (isActual ? 4.5 : 3.5);
+    svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="white" stroke-width="1.5" opacity="${isActual ? '1' : '.7'}"/>`;
+    // Value label for overridden point
+    if (isOvPoint) {
+      svg += `<text x="${x}" y="${y - 12}" text-anchor="middle" font-size="9" font-weight="700" fill="#B45309">${val.toLocaleString()} ✎</text>`;
+    }
+    // Invisible large hit area for hover
+    svg += `<circle cx="${x}" cy="${y}" r="14" fill="transparent"
+      onmouseenter="p2ShowTip(event,'${p2TrendKPI}',${i},${isActual ? 1 : 0})"
+      onmouseleave="p2HideTip()" style="cursor:pointer;"/>`;
+  });
+
+  // Legend
+  const legY = H - 10;
+  svg += `<line x1="${padL}" y1="${legY}" x2="${padL + 22}" y2="${legY}" stroke="#003B70" stroke-width="2.2"/>`;
+  svg += `<circle cx="${padL + 11}" cy="${legY}" r="3.5" fill="#003B70" stroke="white" stroke-width="1"/>`;
+  svg += `<text x="${padL + 28}" y="${legY + 4}" font-size="9" fill="#4A5568" font-weight="600">Actuals</text>`;
+  svg += `<line x1="${padL + 80}" y1="${legY}" x2="${padL + 102}" y2="${legY}" stroke="#7C3AED" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>`;
+  svg += `<circle cx="${padL + 91}" cy="${legY}" r="3" fill="#7C3AED" stroke="white" stroke-width="1" opacity=".7"/>`;
+  svg += `<text x="${padL + 108}" y="${legY + 4}" font-size="9" fill="#6D28D9" font-weight="600" opacity=".8">Forecast</text>`;
+  svg += `<circle cx="${padL + 162}" cy="${legY}" r="7" fill="#003B70" opacity=".12"/>`;
+  svg += `<circle cx="${padL + 162}" cy="${legY}" r="3" fill="#4A5568"/>`;
+  svg += `<text x="${padL + 175}" y="${legY + 4}" font-size="9" fill="#4A5568">Commentary available — hover to view</text>`;
+
+  svg += '</svg>';
+  el.innerHTML = svg;
+}
+
+// ── PANEL 2 — CONFIRM RECONCILIATION ─────────────────────────────
+let p2Confirmed = false;
+
+function p2ConfirmReconciliation() {
+  p2Confirmed = true;
+  const btn = document.getElementById('p2-confirm-btn');
+  const status = document.getElementById('p2-confirm-status');
+  if (btn) {
+    btn.textContent = '✓ Reconciliation confirmed';
+    btn.style.opacity = '.65';
+    btn.disabled = true;
+  }
+  if (status) {
+    const d = new Date();
+    const ds = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    status.textContent = `Confirmed ${ds} · values locked in all charts below`;
+    status.style.display = '';
+  }
+  // Refresh all charts and table with confirmed values
+  p2RenderHCWalk();
+  p2RenderWaterfall();
+  p2RenderTrend();
+  p2RenderMoMTable();
+}
+
+// Allow re-confirmation after a new edit
+function p2ResetConfirm() {
+  p2Confirmed = false;
+  const btn = document.getElementById('p2-confirm-btn');
+  if (btn) { btn.textContent = '✓ Confirm reconciliation'; btn.style.opacity = '1'; btn.disabled = false; }
+  const status = document.getElementById('p2-confirm-status');
+  if (status) status.style.display = 'none';
+}
+
+// ── PANEL 2 — MoM TABLE ───────────────────────────────────────────
+const P2_MOM_PLANS = [
+  { id: 'all',  name: 'All Plans (Combined)',        factor: 1.00 },
+  { id: 'p1',   name: 'USPB Recovery — Inbound',     factor: 0.22 },
+  { id: 'p2',   name: 'USPB Collections — Inbound',  factor: 0.18 },
+  { id: 'p3',   name: 'USPB Fraud — Inbound',        factor: 0.15 },
+  { id: 'p4',   name: 'Wealth Customer Service',      factor: 0.25 },
+  { id: 'p5',   name: 'ICRM Call — Inbound',         factor: 0.20 },
+];
+let p2SelectedPlan = 'all';
+
+function p2SelectPlan(id) {
+  p2SelectedPlan = id;
+  p2RenderMoMTable();
+}
+
+function p2RenderMoMPlanSelect() {
+  const el = document.getElementById('p2-mom-plan');
+  if (!el) return;
+  el.innerHTML = P2_MOM_PLANS.map(p =>
+    `<option value="${p.id}" ${p.id === p2SelectedPlan ? 'selected' : ''}>${p.name}</option>`
+  ).join('');
+}
+
+// Build month-by-month row data, applying plan factor and live reconciled values for Feb 26
+function p2GetMoMData(factor) {
+  const actN = P2_TREND.actualCount;
+  const FEB26 = actN - 1; // index 5
+
+  function getVal(kpiKey, i) {
+    const kpi = P2_TREND.data[kpiKey];
+    let v = i < actN ? kpi.actual[i] : kpi.forecast[i];
+    if (i === FEB26 && i < actN) v = p2GetFinal(kpiKey); // use confirmed/overridden value
+    return Math.round((v || 0) * factor);
+  }
+
+  const rows = P2_TREND.months.map((month, i) => ({
+    month,
+    isActual:  i < actN,
+    isCurrent: i === FEB26,
+    closing:     getVal('hcPayroll',   i),
+    newHires:    getVal('newHires',    i),
+    attrition:   getVal('attrition',   i),
+    transferIn:  getVal('transferIn',  i),
+    transferOut: getVal('transferOut', i),
+    opening: 0, // filled below
+  }));
+
+  // Chain opening HC so each month's opening = previous month's closing.
+  // First row derives opening from its own movements (no prior month available).
+  rows[0].opening = rows[0].closing - rows[0].newHires + rows[0].attrition
+                    - rows[0].transferIn + rows[0].transferOut;
+  for (let i = 1; i < rows.length; i++) {
+    rows[i].opening = rows[i - 1].closing;
+  }
+
+  return rows;
+}
+
+function p2RenderMoMTable() {
+  const el = document.getElementById('p2-mom-table');
+  if (!el) return;
+  const plan = P2_MOM_PLANS.find(p => p.id === p2SelectedPlan) || P2_MOM_PLANS[0];
+  const rows = p2GetMoMData(plan.factor);
+
+  const thStyle = 'text-align:right;';
+  let html = `<table class="dp-table" style="width:100%;min-width:700px;">
+    <thead><tr>
+      <th>Month</th><th>Type</th>
+      <th style="${thStyle}">Opening HC</th>
+      <th style="${thStyle}">+ New Hires</th>
+      <th style="${thStyle}">− Attrition</th>
+      <th style="${thStyle}">+ Transfer In</th>
+      <th style="${thStyle}">− Transfer Out</th>
+      <th style="${thStyle}">Closing HC</th>
+    </tr></thead><tbody>`;
+
+  const td = (val, color) =>
+    `<td style="text-align:right;font-family:var(--mono);font-weight:600;color:${color || 'var(--text2)'};">${val}</td>`;
+
+  rows.forEach(r => {
+    const rowBg = r.isCurrent
+      ? 'background:var(--amber-lt);'
+      : (!r.isActual ? 'background:var(--blue-pale);opacity:.92;' : '');
+    const typeBadge = `<span style="font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700;
+      background:${r.isActual ? 'var(--green-lt)' : 'var(--blue-pale)'};
+      color:${r.isActual ? 'var(--green)' : 'var(--blue3)'};">${r.isActual ? 'Actual' : 'Forecast'}</span>`;
+    const monthCell = `<td style="font-weight:${r.isCurrent ? '700' : '500'};color:${r.isCurrent ? 'var(--amber)' : 'var(--text)'};">${r.month}${r.isCurrent ? ' &#9679;' : ''}</td>`;
+
+    html += `<tr style="${rowBg}">
+      ${monthCell}
+      <td>${typeBadge}</td>
+      ${td(r.opening.toLocaleString(), 'var(--blue3)')}
+      ${td('+' + r.newHires, 'var(--green)')}
+      ${td('−' + r.attrition, 'var(--red)')}
+      ${td('+' + r.transferIn, 'var(--green)')}
+      ${td('−' + r.transferOut, 'var(--red)')}
+      ${td(r.closing.toLocaleString(), 'var(--blue)')}
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
 function renderPanel2() {
-  const qs = WFM.getQueuesForMonth(2026, 2);
-  const cs = WFM.crossSkill;
-
-  // HC bars per queue
-  const barsEl = document.getElementById('p2-hc-bars');
-  if (barsEl) {
-    barsEl.innerHTML = '';
-    qs.forEach(q => {
-      const pct = (q.hc / 2000 * 100).toFixed(1);
-      const barW = (q.hc / 550 * 100).toFixed(0); // scale to largest queue
-      barsEl.innerHTML += `
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="width:140px;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" class="q-link" onclick="openCP('${q.qid}')">${q.qn}</span>
-          <div style="flex:1;height:14px;background:var(--bg);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${barW}%;background:${qColor(q.qid)};border-radius:3px;opacity:.8;"></div>
-          </div>
-          <span style="font-size:11px;font-family:var(--mono);color:var(--text2);min-width:50px;text-align:right;">${WFM.fmtN(q.hc)} <span style="color:var(--text3);">(${pct}%)</span></span>
-          ${q.spec ? '<span style="font-size:9px;background:var(--amber-lt);color:var(--amber);padding:1px 5px;border-radius:3px;">specialist</span>' : ''}
-        </div>`;
-    });
-  }
-
-  // Cross-skill cluster health
-  const clusterEl = document.getElementById('p2-cluster-health');
-  if (clusterEl) {
-    const clusters = [
-      { name: 'RB cluster', queues: ['csrb','csrb_esc'] },
-      { name: 'Cards cluster', queues: ['csaa','cscostco','csbc'] },
-      { name: 'CRS cluster', queues: ['csthd','csbby','cssears'] },
-      { name: 'Specialists', queues: ['csspa','cscan'] },
-    ];
-    clusterEl.innerHTML = '';
-    clusters.forEach(cl => {
-      const totalHC = cl.queues.reduce((s,qid) => s + (cs[qid]?.hc||0), 0);
-      const specAll = cl.queues.every(qid => cs[qid]?.specialist);
-      clusterEl.innerHTML += `
-        <div style="background:var(--bg);border-radius:5px;padding:8px 10px;">
-          <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">${cl.name}
-            ${specAll ? '<span style="font-size:9px;background:var(--amber-lt);color:var(--amber);padding:1px 5px;border-radius:3px;margin-left:4px;">locked</span>' : '<span style="font-size:9px;background:var(--green-lt);color:var(--green);padding:1px 5px;border-radius:3px;margin-left:4px;">flexible</span>'}
-          </div>
-          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${cl.queues.length} queues · ${WFM.fmtN(totalHC)} total HC</div>
-          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;">
-            ${cl.queues.map(qid => `<span style="font-size:9px;padding:2px 7px;border-radius:3px;background:${qColor(qid)}20;color:${qColor(qid)};border:1px solid ${qColor(qid)}40;">${cs[qid]?.name?.replace('CS ','')}</span>`).join('')}
-          </div>
-        </div>`;
-    });
-  }
+  p2RenderKpiTable();
+  p2RenderHCWalk();
+  p2RenderWaterfall();
+  p2RenderTrendBtns();
+  p2RenderTrend();
+  p2RenderMoMPlanSelect();
+  p2RenderMoMTable();
 }
 
 // ── PANEL 3 — FORECASTING ─────────────────────────────────────────

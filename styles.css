@@ -460,6 +460,9 @@ body {
 .dp-table td.green { font-family: var(--mono); color: var(--green); font-weight: 600; }
 .dp-table td.red   { font-family: var(--mono); color: var(--red); font-weight: 600; }
 .dp-table td.blue  { font-family: var(--mono); color: var(--blue3); font-weight: 700; }
+.dp-table tr.mismatch-row td { background: var(--red-lt); }
+.dp-table tr.mismatch-row td:first-child { color: var(--red); font-weight: 700; }
+
 .dp-editable {
   background: var(--bg); border: 1px solid var(--border);
   border-radius: 4px; padding: 4px 8px;

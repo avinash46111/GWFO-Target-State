@@ -286,43 +286,87 @@
     </div>
 <div class="lt-panel" id="p-2">
 
-      <div class="dp-sec">Reconciliation status</div>
-      <div class="dp-row">
-        <div class="dp-card">
-          <div class="dp-card-title">HC Reconciliation</div>
-          <div class="dp-card-sub">NICE ↔ PAW · Feb 2026</div>
-          <div class="dp-status green"><div class="dp-status-dot"></div>Complete</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.6;">HC walk matches across all 10 plans. All FTEs correctly mapped. No orphaned records.</div>
+      <!-- KPI Reconciliation Table -->
+      <div class="dp-sec">KPI reconciliation — NICE ↔ PAW · Feb 2026</div>
+      <div class="dp-card full" style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div class="dp-card-title">Systemic data cross-check</div>
+            <div class="dp-card-sub">PAW systemic load vs NICE actuals · identify and resolve discrepancies before confirming</div>
+          </div>
+          <button class="lt-btn ghost" id="p2-edit-btn" onclick="p2ToggleEdit()" style="font-size:11px;">&#9998; Edit / Overwrite</button>
         </div>
-        <div class="dp-card wide">
-          <div class="dp-card-title">Headcount by plan — end of Feb 2026</div>
-          <div class="dp-card-sub">Total HC: 2,000 · 3 specialist plans · 2 cross-skill clusters</div>
-          <div id="p2-hc-bars" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="p2-kpi-table" style="overflow-x:auto;"></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="lt-btn success" id="p2-confirm-btn" onclick="p2ConfirmReconciliation()">&#10003; Confirm reconciliation</button>
+          <div id="p2-confirm-status" style="display:none;font-size:11px;padding:5px 12px;border-radius:4px;background:var(--green-lt);color:var(--green);font-weight:600;border:1px solid #B8DECA;"></div>
         </div>
       </div>
 
-      <div class="dp-sec">HC movement — January → February 2026</div>
+      <!-- Two charts side by side -->
+      <div class="dp-sec">HC analysis — Feb 2026</div>
+      <div class="dp-row" style="align-items:stretch;">
+
+        <!-- Chart 1: Actual HC Walk (opening → movements → closing) -->
+        <div class="dp-card" style="flex:1;min-width:0;">
+          <div class="dp-card-title">HC walk — opening to closing balance</div>
+          <div class="dp-card-sub" id="p2-walk-sub">Actual movements · reflects reconciled values</div>
+          <div style="display:flex;gap:12px;font-size:9px;font-weight:600;color:var(--text2);margin:8px 0 10px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#1A5EA8;border-radius:2px;display:inline-block;"></span>Balance</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#0A7C4E;border-radius:2px;display:inline-block;"></span>Increase</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#D9261C;border-radius:2px;display:inline-block;"></span>Decrease</span>
+          </div>
+          <div id="p2-hc-walk" style="overflow-x:auto;"></div>
+        </div>
+
+        <!-- Chart 2: Forecast vs Actual bridge (planned closing → deviations → actual closing) -->
+        <div class="dp-card" style="flex:1;min-width:0;">
+          <div class="dp-card-title">Forecast vs actual — plan deviation bridge</div>
+          <div class="dp-card-sub">Planned closing HC · unplanned movements · actual closing HC</div>
+          <div style="display:flex;gap:12px;font-size:9px;font-weight:600;color:var(--text2);margin:8px 0 10px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#1A5EA8;border-radius:2px;display:inline-block;"></span>Reference</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#0A7C4E;border-radius:2px;display:inline-block;"></span>Above plan</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:9px;height:9px;background:#D9261C;border-radius:2px;display:inline-block;"></span>Below plan</span>
+          </div>
+          <div id="p2-waterfall" style="overflow-x:auto;"></div>
+        </div>
+
+      </div>
+      <!-- Trend Chart -->
+      <div class="dp-sec" style="margin-top:14px;">HC trend — actuals &amp; forecast · 18-month view</div>
       <div class="dp-card full">
-        <div style="display:flex;gap:32px;">
-          <div style="flex:1;">
-            <div class="dp-card-title" style="margin-bottom:10px;">Headcount walk — all plans combined</div>
-            <div class="hc-row"><div class="hc-label">Opening HC (Jan 2026 end)</div><div class="hc-val" style="color:var(--blue3);">1,962</div></div>
-            <div class="hc-row"><div class="hc-label">+ New joiners (all plans)</div><div class="hc-val" style="color:var(--green);">+68</div><div class="hc-tag" style="background:var(--green-lt);color:var(--green);">NICE confirmed</div></div>
-            <div class="hc-row"><div class="hc-label">− Attrition (voluntary + contract)</div><div class="hc-val" style="color:var(--red);">−24</div><div class="hc-tag" style="background:var(--red-lt);color:var(--red);">HR confirmed</div></div>
-            <div class="hc-row"><div class="hc-label">− Transfers out (to other LOBs)</div><div class="hc-val" style="color:var(--red);">−8</div><div class="hc-tag" style="background:var(--red-lt);color:var(--red);">PAW confirmed</div></div>
-            <div class="hc-row"><div class="hc-label">+ Transfers in (from other LOBs)</div><div class="hc-val" style="color:var(--green);">+2</div><div class="hc-tag" style="background:var(--green-lt);color:var(--green);">PAW confirmed</div></div>
-            <div class="hc-row" style="border-bottom:none;"><div class="hc-label" style="font-weight:700;color:var(--text);">Closing HC (Feb end)</div><div class="hc-val" style="color:var(--green);font-size:18px;">2,000</div><div class="hc-tag" style="background:var(--green-lt);color:var(--green);">Reconciled ✓</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+          <div>
+            <div class="dp-card-title">Trend analysis — select a KPI to visualize</div>
+            <div class="dp-card-sub">&#9135;&#9135; Actuals &nbsp;&#xB7;&nbsp; - - Forecast &nbsp;&#xB7;&nbsp; Hover data points to see commentary on notable movements</div>
           </div>
-          <div style="width:1px;background:var(--border-lt);"></div>
-          <div style="width:260px;">
-            <div class="dp-card-title" style="margin-bottom:10px;">Cross-skill cluster health</div>
-            <div id="p2-cluster-health" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="p2-trend-btns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+        </div>
+        <div id="p2-trend-wrap" style="position:relative;">
+          <div id="p2-trend-chart"></div>
+          <div id="p2-trend-tip" style="display:none;position:absolute;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 13px;font-size:11px;color:var(--text);box-shadow:0 4px 16px rgba(0,0,0,.13);max-width:240px;z-index:20;pointer-events:none;line-height:1.5;"></div>
+        </div>
+      </div>
+
+      <!-- Month-over-Month Table -->
+      <div class="dp-sec" style="margin-top:14px;">Month-over-month HC detail — plan view</div>
+      <div class="dp-card full">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="dp-card-title">HC movement by month — actuals &amp; forecast</div>
+            <div class="dp-card-sub">Select a plan to view its monthly headcount and movement detail · highlighted row = current reconciled month</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:10px;font-weight:700;color:var(--text2);">Plan</span>
+            <select id="p2-mom-plan" onchange="p2SelectPlan(this.value)" style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:600;color:var(--blue);background:var(--blue-pale);font-family:var(--sans);cursor:pointer;outline:none;min-width:200px;"></select>
           </div>
         </div>
-        <div style="margin-top:14px;display:flex;gap:8px;">
-          <button class="lt-btn success" onclick="ltStep(3)">✓ Confirm reconciliation → Forecasting</button>
-          <button class="lt-btn ghost">↓ Export to PAW</button>
-        </div>
+        <div id="p2-mom-table" style="overflow-x:auto;"></div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="lt-btn ghost">&#8595; Export to PAW</button>
+        <button class="lt-btn success" onclick="ltStep(3)">&#10003; Proceed to Forecasting</button>
       </div>
 
     </div>
