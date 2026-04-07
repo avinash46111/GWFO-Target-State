@@ -369,7 +369,8 @@ function getSelectedQueueIds() {
 const BCRUMBS = {
   persona: () => `<span class="crumb active">Select persona</span>`,
   roles:   () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb active">Capacity Planner</span>`,
-  lt:      () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb" onclick="show('roles','back')" style="cursor:pointer">Capacity Planner</span><span class="crumb-sep">›</span><span class="crumb active">Long Term Planning</span>`,
+  inbox:   () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb" onclick="show('roles','back')" style="cursor:pointer">Capacity Planner</span><span class="crumb-sep">›</span><span class="crumb active">Planning Command Centre</span>`,
+  lt:      () => `<span class="crumb" onclick="show('persona','back')" style="cursor:pointer">Select persona</span><span class="crumb-sep">›</span><span class="crumb" onclick="show('roles','back')" style="cursor:pointer">Capacity Planner</span><span class="crumb-sep">›</span><span class="crumb" onclick="show('inbox','back')" style="cursor:pointer">Command Centre</span><span class="crumb-sep">›</span><span class="crumb active">Long Term Planning</span>`,
 };
 
 let cur = 'persona';
@@ -390,6 +391,7 @@ function show(next, dir) {
     document.getElementById('bcrumb').innerHTML = BCRUMBS[next]();
     cur = next;
     if (next === 'lt') { setTimeout(initLTModule, 80); }
+    if (next === 'inbox') { setTimeout(renderInbox, 80); }
   }, 180);
 }
 
@@ -1357,12 +1359,27 @@ function onCPAdjChange(qid, year, month, metric, rawValue, adjType) {
 
 // ── INIT — RENDER PANEL 3 ON LOAD (it's the default active) ───────
 function initLTModule() {
+  // Check if coming from inbox drill-down
+  var target = window._inboxTarget;
+  if (target) {
+    hierState.business = target.biz;
+    hierState.func = target.func;
+    hierState.qtype = 'Inbound';
+    window._inboxTarget = null;
+  }
   initHierarchy();
   buildActiveQueues();
   ltSelectedQueues = new Set(ACTIVE_QIDS);
   buildLTQFList();
   updateHierLabels();
-  ltStep(1);
+  ltStep(3); // Go to Forecasting step
+  // If drill-down, open FD for the specific plan after a short delay
+  if (target) {
+    setTimeout(function() {
+      var qid = ACTIVE_QIDS[target.planIdx - 1];
+      if (qid) openFDForPlan(qid);
+    }, 200);
+  }
 }
 
 // ── FORECAST DETAIL ────────────────────────────────────────────
@@ -2740,3 +2757,288 @@ function updateSuggestions() {
 })();
 
 
+
+
+// ══════════════════════════════════════════════════════════════════
+// INBOX DASHBOARD — PLANNING COMMAND CENTRE
+// ══════════════════════════════════════════════════════════════════
+
+function scanAllPlans() {
+  // Scan ALL inbound plans across the entire hierarchy
+  const SEASONAL = [0, 1.12, 0.95, 1.02, 0.98, 0.94, 0.88, 0.86, 0.90, 0.96, 1.10, 1.08, 1.05];
+  const ACC_THRESHOLD = 90;
+  const VOL_DEV_THRESHOLD = 15;
+  const AHT_DEV_THRESHOLD = 10;
+  const DRIVER_CHG_THRESHOLD = 10;
+  
+  const plans = [];
+  
+  Object.keys(HIERARCHY).forEach(function(biz) {
+    Object.keys(HIERARCHY[biz]).forEach(function(func) {
+      var funcObj = HIERARCHY[biz][func];
+      // Only inbound for now
+      var count = funcObj['Inbound'] || 0;
+      for (var i = 1; i <= count; i++) {
+        var key = biz + '|' + func + '|' + i;
+        var records = SYNTH_QUEUES[key];
+        if (!records) continue;
+        
+        var feb26 = records.find(function(r){ return r.yr===2026 && r.mo===2; });
+        var jan26 = records.find(function(r){ return r.yr===2026 && r.mo===1; });
+        var nov25 = records.find(function(r){ return r.yr===2025 && r.mo===11; });
+        var mar26fc = records.find(function(r){ return r.yr===2026 && r.mo===3; });
+        
+        if (!feb26) continue;
+        
+        var alerts = [];
+        
+        // Type 1: Actuals deviation
+        if (jan26) {
+          var volChg = jan26.vol > 0 ? Math.abs(feb26.vol - jan26.vol) / jan26.vol * 100 : 0;
+          if (volChg > VOL_DEV_THRESHOLD) {
+            alerts.push({ type: 'actuals', variable: 'Volume', detail: 'Volume ' + (feb26.vol > jan26.vol ? '↑' : '↓') + ' ' + volChg.toFixed(0) + '% MoM' });
+          }
+          var ahtChg = jan26.aht > 0 ? Math.abs(feb26.aht - jan26.aht) / jan26.aht * 100 : 0;
+          if (ahtChg > AHT_DEV_THRESHOLD) {
+            alerts.push({ type: 'actuals', variable: 'AHT', detail: 'AHT ' + (feb26.aht > jan26.aht ? '↑' : '↓') + ' ' + ahtChg.toFixed(0) + '% MoM' });
+          }
+        }
+        
+        // Type 2: Driver forecast change
+        var vintageKey = key;
+        var curV = FORECAST_VINTAGES[vintageKey] && FORECAST_VINTAGES[vintageKey].mar26;
+        var planV = FORECAST_VINTAGES[vintageKey] && FORECAST_VINTAGES[vintageKey].aug25;
+        if (curV && planV && curV.length > 0 && planV.length > 0) {
+          var curAvg = curV.reduce(function(s,r){ return s+r.vol; }, 0) / curV.length;
+          var planAvg = planV.reduce(function(s,r){ return s+r.vol; }, 0) / planV.length;
+          var drvChg = planAvg > 0 ? Math.abs(curAvg - planAvg) / planAvg * 100 : 0;
+          if (drvChg > DRIVER_CHG_THRESHOLD) {
+            alerts.push({ type: 'driver', variable: 'Drivers', detail: 'Driver-implied vol ' + (curAvg > planAvg ? '↑' : '↓') + ' ' + drvChg.toFixed(0) + '% vs plan' });
+          }
+        }
+        
+        // Type 3: Low T-3 accuracy
+        if (nov25) {
+          var checks = [
+            { name: 'Volume', actual: feb26.vol, forecast: Math.round(nov25.vol * SEASONAL[2] / (SEASONAL[11] || 1)) },
+            { name: 'AHT', actual: feb26.aht, forecast: nov25.aht },
+            { name: 'Availability', actual: feb26.avail, forecast: nov25.avail },
+            { name: 'Occupancy', actual: feb26.occ, forecast: nov25.occ },
+          ];
+          checks.forEach(function(v) {
+            var mape = v.actual > 0 ? Math.abs(v.actual - v.forecast) / v.actual * 100 : 0;
+            var acc = 100 - mape;
+            if (acc < ACC_THRESHOLD) {
+              alerts.push({ type: 'accuracy', variable: v.name, detail: v.name + ' accuracy ' + acc.toFixed(0) + '%' });
+            }
+          });
+        }
+        
+        // Check initiatives
+        var inits = STRATEGIC_INITIATIVES.filter(function(init) {
+          return init.biz === biz && init.func === func && init.plans.includes(i);
+        });
+        
+        // Compute accuracy for Vol and AHT (for OK table)
+        var volAcc = 100, ahtAcc = 100;
+        if (nov25) {
+          var volF = Math.round(nov25.vol * SEASONAL[2] / (SEASONAL[11] || 1));
+          volAcc = feb26.vol > 0 ? +(100 - Math.abs(feb26.vol - volF) / feb26.vol * 100).toFixed(1) : 100;
+          ahtAcc = feb26.aht > 0 ? +(100 - Math.abs(feb26.aht - nov25.aht) / feb26.aht * 100).toFixed(1) : 100;
+        }
+        
+        plans.push({
+          key: key,
+          planName: 'Plan ' + i,
+          biz: biz,
+          func: func,
+          planIdx: i,
+          alerts: alerts,
+          initiatives: inits,
+          hasAlerts: alerts.length > 0,
+          fteReq: mar26fc ? mar26fc.erlang_fte : (feb26.erlang_fte || 0),
+          hc: feb26.hc,
+          volAcc: volAcc,
+          ahtAcc: ahtAcc,
+        });
+      }
+    });
+  });
+  
+  return plans;
+}
+
+function renderInbox() {
+  var plans = scanAllPlans();
+  var actionPlans = plans.filter(function(p) { return p.hasAlerts; });
+  var okPlans = plans.filter(function(p) { return !p.hasAlerts; });
+  
+  // KPI strip
+  var totalPlans = plans.length;
+  var totalFTE = plans.reduce(function(s,p){ return s + p.fteReq; }, 0);
+  var totalHC = plans.reduce(function(s,p){ return s + p.hc; }, 0);
+  var hcVariance = totalHC - totalFTE;
+  var avgAccuracy = plans.length > 0 ? (plans.reduce(function(s,p){ return s + p.volAcc; }, 0) / plans.length).toFixed(1) : '0';
+  
+  var kpiEl = document.getElementById('inbox-kpis');
+  kpiEl.innerHTML = 
+    '<div class="inbox-kpi"><div class="inbox-kpi-val" style="color:var(--blue);">' + totalPlans + '</div><div class="inbox-kpi-lbl">Total inbound plans</div><div class="inbox-kpi-delta" style="color:var(--text3);">Across ' + Object.keys(HIERARCHY).length + ' businesses</div></div>' +
+    '<div class="inbox-kpi"><div class="inbox-kpi-val" style="color:var(--red);">' + actionPlans.length + '</div><div class="inbox-kpi-lbl">Need your review</div><div class="inbox-kpi-delta" style="color:var(--red);">' + (actionPlans.length > 0 ? Math.round(actionPlans.length/totalPlans*100) + '% of portfolio' : 'All clear') + '</div></div>' +
+    '<div class="inbox-kpi"><div class="inbox-kpi-val" style="color:var(--green);">' + okPlans.length + '</div><div class="inbox-kpi-lbl">Auto-processed</div><div class="inbox-kpi-delta" style="color:var(--green);">' + Math.round(okPlans.length/totalPlans*100) + '% on autopilot</div></div>' +
+    '<div class="inbox-kpi"><div class="inbox-kpi-val">' + totalFTE.toLocaleString() + '</div><div class="inbox-kpi-lbl">Total FTE demand</div><div class="inbox-kpi-delta" style="color:' + (hcVariance >= 0 ? 'var(--green)' : 'var(--red)') + ';">HC variance: ' + (hcVariance >= 0 ? '+' : '') + hcVariance + '</div></div>' +
+    '<div class="inbox-kpi"><div class="inbox-kpi-val" style="color:' + (parseFloat(avgAccuracy) >= 90 ? 'var(--green)' : 'var(--amber)') + ';">' + avgAccuracy + '%</div><div class="inbox-kpi-lbl">Avg vol accuracy (T-3)</div><div class="inbox-kpi-delta" style="color:var(--text3);">Target: ≥90%</div></div>';
+  
+  // Action count badge
+  document.getElementById('inbox-action-count').textContent = actionPlans.length;
+  document.getElementById('inbox-ok-count').textContent = okPlans.length;
+  
+  // Action required table
+  var actionBody = document.getElementById('inbox-action-body');
+  actionBody.innerHTML = '';
+  actionPlans.forEach(function(p) {
+    var alertTags = p.alerts.map(function(a) {
+      return '<span class="inbox-alert-tag ' + a.type + '">' + a.type.replace('actuals','Actuals').replace('accuracy','Accuracy').replace('driver','Driver') + '</span>';
+    });
+    var uniqueTags = [];
+    var seen = {};
+    alertTags.forEach(function(t) { if (!seen[t]) { seen[t] = true; uniqueTags.push(t); } });
+    
+    var details = p.alerts.map(function(a) { return a.detail; }).join(' · ');
+    
+    var tr = document.createElement('tr');
+    tr.innerHTML = 
+      '<td style="font-weight:600;color:var(--text);">' + p.planName + '</td>' +
+      '<td>' + p.biz + '</td>' +
+      '<td>' + p.func + '</td>' +
+      '<td>' + uniqueTags.join(' ') + '</td>' +
+      '<td style="font-size:10px;max-width:260px;">' + details + '</td>' +
+      '<td><button class="lt-btn primary" style="font-size:9px;padding:3px 10px;white-space:nowrap;" onclick="inboxDrillDown(\'' + p.biz + '\',\'' + p.func + '\',' + p.planIdx + ')">Review →</button></td>';
+    actionBody.appendChild(tr);
+  });
+  
+  // OK table
+  var okBody = document.getElementById('inbox-ok-body');
+  okBody.innerHTML = '';
+  okPlans.forEach(function(p) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = 
+      '<td><input type="checkbox" class="inbox-ok-cb" data-key="' + p.key + '"></td>' +
+      '<td>' + p.planName + '</td>' +
+      '<td>' + p.biz + '</td>' +
+      '<td>' + p.func + '</td>' +
+      '<td class="mono" style="color:' + (p.volAcc >= 90 ? 'var(--green)' : 'var(--amber)') + ';">' + p.volAcc + '%</td>' +
+      '<td class="mono" style="color:' + (p.ahtAcc >= 90 ? 'var(--green)' : 'var(--amber)') + ';">' + p.ahtAcc + '%</td>' +
+      '<td class="mono">' + p.fteReq + '</td>' +
+      '<td><span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--green-lt);color:var(--green);font-weight:600;">✓ On track</span></td>';
+    okBody.appendChild(tr);
+  });
+  
+  // Portfolio insights
+  var insEl = document.getElementById('inbox-insights');
+  
+  // Aggregate by business
+  var bizTotals = {};
+  plans.forEach(function(p) {
+    if (!bizTotals[p.biz]) bizTotals[p.biz] = { fte: 0, hc: 0, alerts: 0, count: 0 };
+    bizTotals[p.biz].fte += p.fteReq;
+    bizTotals[p.biz].hc += p.hc;
+    bizTotals[p.biz].alerts += p.alerts.length;
+    bizTotals[p.biz].count++;
+  });
+  
+  // Find most alerts by function
+  var funcAlerts = {};
+  actionPlans.forEach(function(p) {
+    var k = p.biz + ' / ' + p.func;
+    funcAlerts[k] = (funcAlerts[k] || 0) + p.alerts.length;
+  });
+  var topFunc = Object.keys(funcAlerts).sort(function(a,b){ return funcAlerts[b] - funcAlerts[a]; })[0];
+  
+  // Initiative impact
+  var totalInitFTE = 0;
+  STRATEGIC_INITIATIVES.forEach(function(i) { totalInitFTE += i.fteDelta; });
+  
+  // Overstaffed / understaffed
+  var overCount = 0, underCount = 0;
+  plans.forEach(function(p) {
+    if (p.hc > p.fteReq * 1.1) overCount++;
+    if (p.hc < p.fteReq * 0.9) underCount++;
+  });
+  
+  var insights = [];
+  
+  // Business breakdown
+  Object.keys(bizTotals).forEach(function(biz) {
+    var b = bizTotals[biz];
+    var variance = b.hc - b.fte;
+    var cls = b.alerts > 0 ? 'warn' : 'good';
+    insights.push('<div class="inbox-insight ' + cls + '">' +
+      '<div class="inbox-insight-title">' + biz + ' — ' + b.count + ' plans</div>' +
+      '<div class="inbox-insight-body">FTE demand: ' + b.fte.toLocaleString() + ' · HC: ' + b.hc.toLocaleString() + ' · Variance: ' + (variance >= 0 ? '+' : '') + variance + '<br>' +
+      (b.alerts > 0 ? b.alerts + ' alerts across this business unit' : 'All plans on track — no alerts') + '</div></div>');
+  });
+  
+  // Top alert function
+  if (topFunc) {
+    insights.push('<div class="inbox-insight warn">' +
+      '<div class="inbox-insight-title">⚠ Highest alert concentration</div>' +
+      '<div class="inbox-insight-body"><strong>' + topFunc + '</strong> has ' + funcAlerts[topFunc] + ' alerts — highest across the portfolio. Prioritise review here.</div></div>');
+  }
+  
+  // Initiative impact
+  insights.push('<div class="inbox-insight">' +
+    '<div class="inbox-insight-title">📋 Active initiatives</div>' +
+    '<div class="inbox-insight-body">' + STRATEGIC_INITIATIVES.length + ' strategic initiatives active this cycle. Net FTE impact: <strong style="color:' + (totalInitFTE > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (totalInitFTE > 0 ? '+' : '') + totalInitFTE + ' FTE</strong></div></div>');
+  
+  // Staffing balance
+  insights.push('<div class="inbox-insight ' + (underCount > overCount ? 'warn' : 'good') + '">' +
+    '<div class="inbox-insight-title">📊 Staffing balance</div>' +
+    '<div class="inbox-insight-body">' + overCount + ' plans overstaffed (HC > 110% of FTE Req)<br>' + underCount + ' plans understaffed (HC < 90% of FTE Req)<br>' +
+    'Consider cross-training or rebalancing between functions.</div></div>');
+  
+  insEl.innerHTML = insights.join('');
+}
+
+function toggleInboxOk() {
+  var section = document.getElementById('inbox-ok-section');
+  var btn = document.getElementById('inbox-ok-toggle');
+  if (section.style.display === 'none') {
+    section.style.display = '';
+    btn.textContent = 'Hide details ▲';
+  } else {
+    section.style.display = 'none';
+    btn.textContent = 'Show details ▼';
+  }
+}
+
+function toggleBatchApprove() {
+  var checked = document.getElementById('inbox-batch-check').checked;
+  var cbs = document.querySelectorAll('.inbox-ok-cb');
+  cbs.forEach(function(cb) { cb.checked = checked; });
+  document.getElementById('inbox-batch-btn').style.display = checked ? '' : 'none';
+}
+
+function batchApproveOk() {
+  var cbs = document.querySelectorAll('.inbox-ok-cb:checked');
+  var count = cbs.length;
+  cbs.forEach(function(cb) {
+    var row = cb.closest('tr');
+    var statusCell = row.querySelector('td:last-child');
+    statusCell.innerHTML = '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--green-lt);color:var(--green);font-weight:600;">✓ Approved</span>';
+    cb.checked = false;
+    cb.disabled = true;
+  });
+  document.getElementById('inbox-batch-check').checked = false;
+  document.getElementById('inbox-batch-btn').style.display = 'none';
+  alert(count + ' plans approved and locked for this cycle.');
+}
+
+function inboxDrillDown(biz, func, planIdx) {
+  // Navigate to the LT workspace with the right hierarchy pre-selected
+  // Store the target so initLTModule can pick it up
+  window._inboxTarget = { biz: biz, func: func, planIdx: planIdx };
+  show('lt', 'forward');
+}
+
+// Patch initLTModule to handle inbox drill-down
+var _origInitLT = typeof initLTModule === 'function' ? initLTModule : null;

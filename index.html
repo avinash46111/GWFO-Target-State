@@ -93,7 +93,7 @@
     <p class="pg-sub">Choose the horizon you work in. Each role has a purpose-built workspace.</p>
   </div>
   <div class="cards">
-    <div class="card cb" onclick="show('lt','forward')">
+    <div class="card cb" onclick="show('inbox','forward')">
       <div class="card-bar"></div>
       <div class="card-body">
         <div class="icon-wrap"><svg class="ci" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M7 13h2M7 17h2M11 13h6M11 17h4"/></svg></div>
@@ -148,6 +148,81 @@
   </div>
 </div>
 
+
+<!-- ══ SCREEN: INBOX DASHBOARD ══ -->
+<div class="screen" id="s-inbox">
+  <div class="inbox-header">
+    <div>
+      <div class="inbox-title">Planning Command Centre</div>
+      <div class="inbox-sub">FY2025–26 · Monthly planning cycle · March 2026</div>
+    </div>
+    <div class="inbox-header-actions">
+      <button class="lt-btn ghost" onclick="show('lt','forward')" style="font-size:11px;">Open detailed workspace →</button>
+    </div>
+  </div>
+
+  <!-- Portfolio KPI Strip -->
+  <div class="inbox-kpi-strip" id="inbox-kpis"></div>
+
+  <!-- Action Required Section -->
+  <div class="inbox-section">
+    <div class="inbox-sec-header">
+      <div class="inbox-sec-badge red" id="inbox-action-count">0</div>
+      <div>
+        <div class="inbox-sec-title">Action required</div>
+        <div class="inbox-sec-sub">Plans that need your review or decision this cycle</div>
+      </div>
+    </div>
+    <div class="inbox-table-wrap">
+      <table class="inbox-table" id="inbox-action-table">
+        <thead><tr>
+          <th>Plan</th><th>Business</th><th>Function</th>
+          <th>Alert type</th><th>Details</th><th>Action</th>
+        </tr></thead>
+        <tbody id="inbox-action-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Auto-Processed Section -->
+  <div class="inbox-section">
+    <div class="inbox-sec-header">
+      <div class="inbox-sec-badge green" id="inbox-ok-count">0</div>
+      <div>
+        <div class="inbox-sec-title">Auto-processed — no action needed</div>
+        <div class="inbox-sec-sub">Forecasts refreshed automatically · accuracy within tolerance · no deviations</div>
+      </div>
+      <button class="inbox-expand-btn" onclick="toggleInboxOk()" id="inbox-ok-toggle">Show details ▼</button>
+    </div>
+    <div id="inbox-ok-section" style="display:none;">
+      <div class="inbox-batch-bar">
+        <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="inbox-batch-check" onchange="toggleBatchApprove()"> Select all for batch approval</label>
+        <button class="lt-btn success" id="inbox-batch-btn" style="font-size:10px;padding:4px 12px;display:none;" onclick="batchApproveOk()">✓ Approve all selected</button>
+      </div>
+      <table class="inbox-table compact" id="inbox-ok-table">
+        <thead><tr>
+          <th style="width:30px;"></th><th>Plan</th><th>Business</th><th>Function</th>
+          <th>Vol accuracy</th><th>AHT accuracy</th><th>FTE Req</th><th>Status</th>
+        </tr></thead>
+        <tbody id="inbox-ok-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Portfolio Insights -->
+  <div class="inbox-section">
+    <div class="inbox-sec-header">
+      <div class="inbox-sec-badge blue">i</div>
+      <div>
+        <div class="inbox-sec-title">Portfolio insights</div>
+        <div class="inbox-sec-sub">Cross-plan intelligence and recommendations</div>
+      </div>
+    </div>
+    <div class="inbox-insights" id="inbox-insights"></div>
+  </div>
+</div>
+
+
 <!-- ══ SCREEN: LT WORKSPACE ══ -->
 <div class="screen" id="s-lt">
 
@@ -179,9 +254,9 @@
       </div>
     </div>
     <div class="lt-nav-foot">
-      <button class="back-btn" onclick="show('roles','back')">
+      <button class="back-btn" onclick="show('inbox','back')">
         <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-        Back to roles
+        Back to Command Centre
       </button>
     </div>
   </nav>
